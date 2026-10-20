@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .vercel
+.agents/
+skills-lock.json
+

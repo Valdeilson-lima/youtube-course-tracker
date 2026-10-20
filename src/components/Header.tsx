@@ -44,23 +44,27 @@ export const Header: React.FC<HeaderProps> = ({
     totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 transition-colors">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
         {/* Brand */}
         <div
-          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none shrink-0"
+          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none shrink-0 group"
           onClick={onBackToDashboard}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && onBackToDashboard()}
+          aria-label="Ir para página inicial do TubeCourse"
         >
-          <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 text-white shadow-md shadow-red-500/20 shrink-0">
+          <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 text-white shadow-md shadow-red-500/20 shrink-0 group-hover:scale-105 transition-transform duration-200">
             <YouTubeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-amber-300 absolute -top-1 -right-1 stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm sm:text-lg tracking-tight text-white">
+              <span className="font-extrabold text-sm sm:text-lg tracking-tight text-white group-hover:text-red-400 transition-colors">
                 TubeCourse
               </span>
-              <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
                 PRO
               </span>
             </div>
@@ -87,10 +91,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Action Buttons (Touch friendly: min 44px on mobile) */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Cloud Sync Button */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={onOpenAuthModal}
               title={
@@ -98,7 +102,8 @@ export const Header: React.FC<HeaderProps> = ({
                   ? `Conectado como ${user.email} (Clique para gerenciar)`
                   : 'Conectar ao Supabase'
               }
-              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+              aria-label="Sincronização na nuvem"
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-xl border transition min-h-[40px] sm:min-h-[38px] active:scale-95 ${
                 user
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
                   : 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:text-white hover:bg-slate-800'
@@ -106,12 +111,12 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="relative flex items-center">
                 <Cloud
-                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                  className={`w-4 h-4 ${
                     user ? 'text-emerald-400 fill-emerald-400/20' : 'text-slate-400'
                   }`}
                 />
                 {user && (
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 )}
               </div>
               <span className="hidden md:inline">
@@ -124,10 +129,11 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onManualSync}
                 disabled={isSyncing}
                 title="Forçar Sincronização Agora"
-                className="p-1.5 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800 border border-slate-800 transition"
+                aria-label="Sincronizar agora"
+                className="p-2 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800 border border-slate-800 transition min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 ${
+                  className={`w-4 h-4 ${
                     isSyncing ? 'animate-spin text-emerald-400' : ''
                   }`}
                 />
@@ -138,18 +144,20 @@ export const Header: React.FC<HeaderProps> = ({
           {currentCourse && (
             <button
               onClick={onBackToDashboard}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700"
+              aria-label="Voltar para Meus Cursos"
+              className="flex items-center justify-center gap-1 px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 min-h-[40px] min-w-[40px] active:scale-95"
             >
-              <LayoutGrid className="w-3.5 h-3.5 sm:hidden" />
+              <LayoutGrid className="w-4 h-4 sm:hidden" />
               <span className="hidden sm:inline">Meus Cursos</span>
             </button>
           )}
 
           <button
             onClick={onOpenAddModal}
-            className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-xl transition shadow-md shadow-red-600/20 active:scale-95"
+            aria-label="Adicionar nova playlist"
+            className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-xl transition shadow-md shadow-red-600/20 active:scale-95 min-h-[40px]"
           >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Adicionar Playlist</span>
             <span className="sm:hidden font-medium">Novo</span>
           </button>
@@ -157,7 +165,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenSettings}
             title="Configurações"
-            className="p-1.5 sm:p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition border border-transparent hover:border-slate-700"
+            aria-label="Abrir configurações"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition border border-transparent hover:border-slate-700 min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
           >
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>

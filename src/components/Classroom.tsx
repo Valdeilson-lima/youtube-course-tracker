@@ -17,6 +17,7 @@ import {
   Flame,
   ListVideo,
   Play,
+  Share2,
 } from 'lucide-react';
 
 interface ClassroomProps {
@@ -55,6 +56,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Current active lesson
   const activeLessonIndex = course.lessons.findIndex((l) => l.id === activeLessonId);
   const activeLesson = course.lessons[activeLessonIndex] || course.lessons[0];
+  const nextLesson = course.lessons[activeLessonIndex + 1];
 
   // Sync noteText when activeLesson changes
   useEffect(() => {
@@ -146,7 +148,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Called automatically when YouTube video finishes
   const handleVideoEnded = () => {
     const currentLatest = courseRef.current;
-    const currentLesson = currentLatest.lessons.find((l) => l.id === activeLessonId);
 
     // 1. Marca a aula atual como CONCLUÍDA de forma definitiva
     const updatedLessons = currentLatest.lessons.map((lesson) => {
@@ -174,7 +175,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
     const nextLessonId = hasNext ? currentLatest.lessons[currentIdx + 1].id : activeLessonId;
 
     if (autoPlayNext && hasNext) {
-      // Atualiza o curso mantendo a aula concluída e avançando para a próxima
       const updatedCourse: Course = {
         ...currentLatest,
         lessons: updatedLessons,
@@ -270,20 +270,21 @@ export const Classroom: React.FC<ClassroomProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col pb-16 lg:pb-0">
+    <div className="min-h-screen bg-slate-950 flex flex-col pb-safe">
       {/* Top Bar (Height responsive: top-14 on mobile, top-16 on desktop) */}
-      <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-14 sm:top-16 z-30 flex items-center justify-between gap-2 shadow-md">
+      <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-14 sm:top-16 z-30 flex items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onBack}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 shrink-0 min-h-[38px]"
+            aria-label="Voltar para a lista de cursos"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 shrink-0 min-h-[40px] active:scale-95"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Voltar</span>
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[170px] sm:max-w-md">
+              <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[160px] sm:max-w-md">
                 {course.title}
               </h2>
               {course.category && (
@@ -292,7 +293,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-[10px] sm:text-xs text-slate-400">
+            <p className="text-[11px] text-slate-400">
               Aula {activeLessonIndex + 1} de {totalLessons}
             </p>
           </div>
@@ -303,7 +304,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
           <span className="text-[11px] sm:text-xs font-bold text-white">
             {completedLessons}/{totalLessons} ({progressPercent}%)
           </span>
-          <div className="w-14 sm:w-28 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700/60">
+          <div className="w-16 sm:w-28 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700/60">
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-500'
@@ -314,14 +315,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </div>
       </div>
 
-      {/* Mobile Navigation Tabs (Shown on screens < 1024px) */}
-      <div className="lg:hidden flex bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-1 text-xs font-semibold sticky top-[52px] z-20">
+      {/* Mobile Navigation Segment Tabs (UI/UX standard for mobile video learning) */}
+      <div className="lg:hidden flex bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-1.5 gap-2 text-xs font-semibold sticky top-[52px] z-20">
         <button
           onClick={() => setMobileTab('video')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[40px] ${
+          aria-label="Ver reprodutor de vídeo"
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
             mobileTab === 'video'
               ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
           }`}
         >
           <Play className="w-3.5 h-3.5 fill-current" />
@@ -329,24 +331,26 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </button>
         <button
           onClick={() => setMobileTab('lessons')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[40px] ${
+          aria-label={`Ver lista de todas as ${totalLessons} aulas`}
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
             mobileTab === 'lessons'
               ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
           }`}
         >
-          <ListVideo className="w-3.5 h-3.5" />
+          <ListVideo className="w-4 h-4" />
           <span>Aulas ({totalLessons})</span>
         </button>
         <button
           onClick={() => setMobileTab('notes')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[40px] ${
+          aria-label="Ver bloco de anotações da aula"
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
             mobileTab === 'notes'
               ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200'
+              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
           }`}
         >
-          <FileText className="w-3.5 h-3.5" />
+          <FileText className="w-4 h-4" />
           <span>Anotações</span>
         </button>
       </div>
@@ -371,14 +375,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
             />
           )}
 
-          {/* Action and Navigation Controls (Mobile Optimized 2-row layout) */}
-          <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-2.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          {/* Action and Navigation Controls (Mobile Optimized 2-row layout with 8px+ spacing) */}
+          <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
             {/* Row 1: Anterior, Concluir, Próxima */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={goToPrevLesson}
                 disabled={activeLessonIndex <= 0}
-                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Aula anterior"
+                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
               >
                 <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline ml-1">Anterior</span>
@@ -386,7 +391,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
               <button
                 onClick={() => toggleLessonCompletion(activeLesson.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 shadow-md min-h-[44px] ${
+                aria-label={activeLesson.completed ? 'Desmarcar conclusão' : 'Marcar como concluída'}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 shadow-md min-h-[44px] ${
                   activeLesson.completed
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
                     : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
@@ -408,7 +414,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <button
                 onClick={goToNextLesson}
                 disabled={activeLessonIndex >= totalLessons - 1}
-                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Próxima aula"
+                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
               >
                 <span className="hidden sm:inline mr-1">Próxima</span>
                 <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
@@ -416,8 +423,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
             </div>
 
             {/* Row 2: Autoplay & Speed Selector */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
-              <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+            <div className="flex items-center justify-between sm:justify-end gap-3 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none min-h-[36px]">
                 <input
                   type="checkbox"
                   checked={autoPlayNext}
@@ -427,12 +434,13 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 <span className="text-[11px] sm:text-xs font-medium">Avanço automático</span>
               </label>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-[11px] text-slate-400 hidden sm:inline">Velocidade:</span>
                 <select
                   value={playbackSpeed}
                   onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 font-semibold focus:outline-none focus:border-red-500 min-h-[36px]"
+                  aria-label="Velocidade de reprodução"
+                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-semibold focus:outline-none focus:border-red-500 min-h-[40px] cursor-pointer"
                 >
                   <option value={0.75}>0.75x</option>
                   <option value={1}>1.0x</option>
@@ -446,15 +454,31 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
           {/* Current Lesson Title */}
           <div className="px-1 sm:px-0">
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-red-400 font-semibold mb-1">
-              <span>AULA {activeLessonIndex + 1}</span>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-red-400 font-semibold mb-1">
+              <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
+                AULA {activeLessonIndex + 1}
+              </span>
               <span>•</span>
               <span className="truncate">{course.channelTitle}</span>
             </div>
-            <h1 className="text-sm sm:text-xl lg:text-2xl font-extrabold text-white tracking-tight leading-snug">
+            <h1 className="text-base sm:text-xl lg:text-2xl font-extrabold text-white tracking-tight leading-snug">
               {activeLesson?.title}
             </h1>
           </div>
+
+          {/* Next Lesson Preview Banner on Mobile */}
+          {nextLesson && (
+            <div
+              onClick={() => selectLesson(nextLesson.id)}
+              className="sm:hidden p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700 active:scale-[0.99] transition"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">A Seguir</p>
+                <p className="text-xs font-semibold text-slate-200 truncate">{nextLesson.title}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+          )}
 
           {/* Notes and Info on Desktop (or when mobile tab is notes) */}
           <div className="hidden lg:block bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
@@ -489,7 +513,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                   <button
                     onClick={insertTimestamp}
                     title="Inserir timestamp atual do vídeo"
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700 active:scale-95"
                   >
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
                     <span>Timestamp</span>
@@ -497,7 +521,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                   <button
                     onClick={downloadCourseNotes}
                     title="Exportar anotações em Markdown"
-                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition active:scale-95"
                   >
                     <Download className="w-4 h-4" />
                   </button>
@@ -535,17 +559,17 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 <FileText className="w-4 h-4 text-red-500" />
                 <span>Anotações da Aula {activeLessonIndex + 1}</span>
               </h3>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={insertTimestamp}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-slate-800 text-amber-400 rounded-lg border border-slate-700 min-h-[36px]"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[40px] active:scale-95"
                 >
-                  <Clock className="w-3.5 h-3.5" />
+                  <Clock className="w-4 h-4" />
                   <span>Timestamp</span>
                 </button>
                 <button
                   onClick={downloadCourseNotes}
-                  className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-lg border border-slate-700"
+                  className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
                 >
                   <Download className="w-4 h-4" />
                 </button>
@@ -579,19 +603,19 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Filtrar por nome da aula..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[38px]"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[42px]"
               />
             </div>
           </div>
 
-          {/* Lessons List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 p-2 space-y-1">
+          {/* Lessons List (Each target min-h-48px with 8px+ spacing) */}
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 p-2 space-y-1.5">
             {filteredLessons.map((lesson) => {
               const originalIndex = course.lessons.findIndex((l) => l.id === lesson.id);
               const isActive = lesson.id === activeLessonId;
@@ -600,13 +624,17 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 <div
                   key={lesson.id}
                   onClick={() => selectLesson(lesson.id)}
-                  className={`group flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl cursor-pointer transition select-none min-h-[56px] ${
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && selectLesson(lesson.id)}
+                  aria-label={`Aula ${originalIndex + 1}: ${lesson.title} - ${lesson.completed ? 'Concluída' : 'Pendente'}`}
+                  className={`group flex items-start gap-3 p-3 rounded-xl cursor-pointer transition select-none min-h-[60px] active:scale-[0.99] ${
                     isActive
                       ? 'bg-red-500/10 border border-red-500/30'
                       : 'hover:bg-slate-800/60 border border-transparent active:bg-slate-800/80'
                   }`}
                 >
-                  {/* Checkbox button */}
+                  {/* Checkbox button (44px touch area) */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -614,7 +642,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                       toggleLessonCompletion(lesson.id);
                     }}
                     title={lesson.completed ? 'Marcar como não concluída' : 'Marcar como concluída'}
-                    className="mt-0.5 text-slate-400 hover:text-emerald-400 transition shrink-0 min-h-[32px] min-w-[32px] flex items-center justify-center"
+                    className="mt-0.5 text-slate-400 hover:text-emerald-400 transition shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center active:scale-95"
                   >
                     {lesson.completed ? (
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 fill-emerald-950" />
@@ -624,7 +652,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                   </button>
 
                   {/* Thumbnail snippet */}
-                  <div className="relative w-14 h-9 sm:w-16 sm:h-10 rounded-lg overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
+                  <div className="relative w-16 h-10 rounded-lg overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
                     <img
                       src={lesson.thumbnailUrl || `https://img.youtube.com/vi/${lesson.id}/mqdefault.jpg`}
                       alt=""
@@ -633,7 +661,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                     />
                     {isActive && (
                       <div className="absolute inset-0 bg-red-600/40 flex items-center justify-center">
-                        <Flame className="w-3.5 h-3.5 text-white animate-pulse" />
+                        <Flame className="w-4 h-4 text-white animate-pulse" />
                       </div>
                     )}
                   </div>
@@ -645,7 +673,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                       {lesson.duration && <span>• {lesson.duration}</span>}
                       {lesson.notes && (
                         <span className="flex items-center gap-0.5 text-amber-400" title="Possui anotações">
-                          • <FileText className="w-2.5 h-2.5" />
+                          • <FileText className="w-3 h-3" />
                         </span>
                       )}
                     </div>
