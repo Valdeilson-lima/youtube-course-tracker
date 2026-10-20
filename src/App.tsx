@@ -10,7 +10,7 @@ import {
 } from './utils/storage';
 import {
   getSupabaseClient,
-  syncCoursesFromCloud,
+  syncAllCoursesWithCloud,
   saveCourseToCloud,
   deleteCourseFromCloud,
 } from './services/supabase';
@@ -21,15 +21,18 @@ import { Classroom } from './components/Classroom';
 import { AddCourseModal } from './components/AddCourseModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
-import { DownloadCloud, Smartphone } from 'lucide-react';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { Smartphone } from 'lucide-react';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const toast = useToast();
   const [courses, setCourses] = useState<Course[]>(() => loadCourses());
   const [settings, setSettings] = useState<UserSettings>(() => loadSettings());
   const [currentCourseId, setCurrentCourseId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Supabase Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -46,6 +49,28 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
+  // Sync handler with cloud
+  const handleCloudSync = async (userId: string, showToast = false) => {
+    setIsSyncing(true);
+    try {
+      const mergedCourses = await syncAllCoursesWithCloud(courses, userId);
+      if (mergedCourses && mergedCourses.length > 0) {
+        setCourses(mergedCourses);
+        saveCourses(mergedCourses);
+      }
+      if (showToast) {
+        toast.success('Sincronizado!', 'Seus cursos estão 100% atualizados na nuvem.');
+      }
+    } catch (err: any) {
+      console.error('Falha na sincronização:', err);
+      if (showToast) {
+        toast.error('Erro na sincronização', 'Verifique sua conexão ou tente novamente.');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Listen to Supabase Auth changes
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -54,14 +79,7 @@ export const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Sync courses from cloud on initial session
-        syncCoursesFromCloud(session.user.id)
-          .then((cloudCourses) => {
-            if (cloudCourses && cloudCourses.length > 0) {
-              setCourses(cloudCourses);
-            }
-          })
-          .catch((err) => console.warn('Falha na sincronização inicial:', err));
+        handleCloudSync(session.user.id);
       }
     });
 
@@ -70,13 +88,7 @@ export const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        syncCoursesFromCloud(session.user.id)
-          .then((cloudCourses) => {
-            if (cloudCourses && cloudCourses.length > 0) {
-              setCourses(cloudCourses);
-            }
-          })
-          .catch((err) => console.warn('Erro ao carregar cursos:', err));
+        handleCloudSync(session.user.id, true);
       }
     });
 
@@ -170,17 +182,19 @@ export const App: React.FC = () => {
   const handleAddCourse = (newCourse: Course) => {
     setCourses((prev) => [newCourse, ...prev]);
     setCurrentCourseId(newCourse.id);
+    toast.success('Curso Adicionado!', `"${newCourse.title}" foi importado com sucesso.`);
 
     if (user) {
-      saveCourseToCloud(newCourse, user.id).catch((err) =>
-        console.error('Falha ao salvar novo curso na nuvem:', err)
-      );
+      saveCourseToCloud(newCourse, user.id)
+        .then(() => toast.info('Salvo na Nuvem', 'Curso sincronizado com o Supabase.'))
+        .catch((err) => console.error('Falha ao salvar na nuvem:', err));
     }
   };
 
   const handleLoadDemoCourses = () => {
     setCourses(INITIAL_DEMO_COURSES);
     saveCourses(INITIAL_DEMO_COURSES);
+    toast.success('Cursos Carregados', 'Cursos de demonstração restaurados.');
     if (user) {
       INITIAL_DEMO_COURSES.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
     }
@@ -192,11 +206,13 @@ export const App: React.FC = () => {
     saveCourses(INITIAL_DEMO_COURSES);
     saveSettings(DEFAULT_SETTINGS);
     setCurrentCourseId(null);
+    toast.info('Dados Restaurados', 'As configurações e cursos voltaram aos padrões.');
   };
 
   const handleImportCourses = (imported: Course[]) => {
     setCourses(imported);
     saveCourses(imported);
+    toast.success('Backup Restaurado', `${imported.length} cursos foram importados.`);
     if (user) {
       imported.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
     }
@@ -207,6 +223,7 @@ export const App: React.FC = () => {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(() => {
         setDeferredPrompt(null);
+        toast.success('Aplicativo Instalado!', 'TubeCourse adicionado à sua tela inicial.');
       });
     }
   };
@@ -217,24 +234,26 @@ export const App: React.FC = () => {
         courses={courses}
         currentCourse={currentCourse}
         user={user}
+        isSyncing={isSyncing}
         onBackToDashboard={handleBackToDashboard}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onManualSync={user ? () => handleCloudSync(user.id, true) : undefined}
       />
 
-      {/* PWA Install Notice on mobile / desktop */}
+      {/* PWA Install Notice on mobile */}
       {deferredPrompt && (
-        <div className="bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2 flex items-center justify-between text-xs text-white">
-          <div className="flex items-center gap-2">
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-600 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-white shadow-md">
+          <div className="flex items-center gap-2 min-w-0">
             <Smartphone className="w-4 h-4 shrink-0" />
-            <span>Instale o TubeCourse como aplicativo no seu celular ou computador!</span>
+            <span className="truncate">Instale o TubeCourse como app no seu celular!</span>
           </div>
           <button
             onClick={handleInstallPWA}
-            className="px-3 py-1 bg-white text-red-600 font-bold rounded-lg shadow hover:bg-slate-100 transition"
+            className="px-2.5 py-1 bg-white text-red-600 font-bold rounded-lg shadow hover:bg-slate-100 transition shrink-0 ml-2"
           >
-            Instalar App
+            Instalar
           </button>
         </div>
       )}
@@ -282,8 +301,21 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         user={user}
         onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={(loggedUser) => setUser(loggedUser)}
+        onAuthSuccess={(loggedUser) => {
+          setUser(loggedUser);
+          if (loggedUser) {
+            handleCloudSync(loggedUser.id, true);
+          }
+        }}
       />
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 };

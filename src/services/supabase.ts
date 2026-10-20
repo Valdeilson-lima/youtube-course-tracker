@@ -102,7 +102,7 @@ export function resetSupabaseClient() {
 }
 
 /**
- * Funções de Sincronização de Cursos com Supabase
+ * Busca todos os cursos salvos pelo usuário no Supabase
  */
 export async function syncCoursesFromCloud(userId: string): Promise<Course[]> {
   const client = getSupabaseClient();
@@ -134,6 +134,9 @@ export async function syncCoursesFromCloud(userId: string): Promise<Course[]> {
   }));
 }
 
+/**
+ * Salva ou atualiza um curso no Supabase
+ */
 export async function saveCourseToCloud(course: Course, userId: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) return;
@@ -143,12 +146,12 @@ export async function saveCourseToCloud(course: Course, userId: string): Promise
     user_id: userId,
     playlist_id: course.playlistId,
     title: course.title,
-    description: course.description,
-    channel_title: course.channelTitle,
-    thumbnail_url: course.thumbnailUrl,
+    description: course.description || '',
+    channel_title: course.channelTitle || '',
+    thumbnail_url: course.thumbnailUrl || '',
     category: course.category || 'Geral',
-    current_lesson_id: course.currentLessonId,
-    lessons: course.lessons,
+    current_lesson_id: course.currentLessonId || '',
+    lessons: course.lessons || [],
     last_accessed_at: course.lastAccessedAt || new Date().toISOString(),
   };
 
@@ -159,6 +162,9 @@ export async function saveCourseToCloud(course: Course, userId: string): Promise
   }
 }
 
+/**
+ * Deleta um curso no Supabase
+ */
 export async function deleteCourseFromCloud(courseId: string, userId: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) return;
@@ -168,4 +174,42 @@ export async function deleteCourseFromCloud(courseId: string, userId: string): P
     console.error('Erro ao remover curso do Supabase:', error);
     throw error;
   }
+}
+
+/**
+ * Sincronização inteligente bidirecional:
+ * 1. Baixa os cursos da nuvem.
+ * 2. Se a nuvem estiver vazia e o usuário tiver cursos locais, sobe todos os locais para a nuvem!
+ * 3. Se ambos tiverem cursos, mescla os locais que faltam na nuvem.
+ */
+export async function syncAllCoursesWithCloud(
+  localCourses: Course[],
+  userId: string
+): Promise<Course[]> {
+  const client = getSupabaseClient();
+  if (!client) return localCourses;
+
+  const cloudCourses = await syncCoursesFromCloud(userId);
+
+  if (cloudCourses.length > 0) {
+    // Cloud tem cursos. Se local tiver algum curso que ainda não está na nuvem, faz upload.
+    const cloudIds = new Set(cloudCourses.map((c) => c.id));
+    for (const local of localCourses) {
+      if (!cloudIds.has(local.id)) {
+        await saveCourseToCloud(local, userId).catch(console.error);
+        cloudCourses.push(local);
+      }
+    }
+    return cloudCourses;
+  }
+
+  // Cloud está vazia. Se local tiver cursos, sobe TODOS para o Supabase!
+  if (localCourses.length > 0) {
+    for (const local of localCourses) {
+      await saveCourseToCloud(local, userId).catch(console.error);
+    }
+    return localCourses;
+  }
+
+  return [];
 }

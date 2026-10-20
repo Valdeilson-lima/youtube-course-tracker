@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Course } from '../types';
+import { useToast } from '../context/ToastContext';
 import {
   Play,
   CheckCircle2,
@@ -70,6 +71,7 @@ export const CourseList: React.FC<CourseListProps> = ({
   onOpenAddModal,
   onLoadDemoCourses,
 }) => {
+  const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState<string>('');
@@ -106,6 +108,7 @@ export const CourseList: React.FC<CourseListProps> = ({
     e.preventDefault();
     if (newCategoryName.trim()) {
       onUpdateCourseCategory(courseId, newCategoryName.trim());
+      toast.success('Categoria Atualizada', `O curso agora pertence a "${newCategoryName.trim()}".`);
     }
     setEditingCourseId(null);
   };
@@ -331,10 +334,11 @@ export const CourseList: React.FC<CourseListProps> = ({
                       onClick={() => {
                         if (confirm(`Reiniciar todo o progresso do curso "${course.title}"?`)) {
                           onResetCourseProgress(course.id);
+                          toast.info('Progresso Reiniciado', `As aulas de "${course.title}" voltaram ao início.`);
                         }
                       }}
                       title="Reiniciar Progresso"
-                      className="p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition border border-slate-800 hover:border-slate-700"
+                      className="p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition border border-slate-800 hover:border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
@@ -343,10 +347,11 @@ export const CourseList: React.FC<CourseListProps> = ({
                       onClick={() => {
                         if (confirm(`Tem certeza que deseja remover o curso "${course.title}"?`)) {
                           onDeleteCourse(course.id);
+                          toast.info('Curso Removido', `O curso "${course.title}" foi excluído.`);
                         }
                       }}
                       title="Remover Curso"
-                      className="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition border border-slate-800 hover:border-slate-700"
+                      className="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition border border-slate-800 hover:border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
