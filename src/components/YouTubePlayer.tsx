@@ -1,11 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, RotateCcw, Volume2, Maximize, AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 declare global {
   interface Window {
     YT: any;
     onYouTubeIframeAPIReady: () => void;
   }
+}
+
+export interface YouTubePlayerHandle {
+  seekTo: (seconds: number) => void;
+  play: () => void;
+  pause: () => void;
+  togglePlay: () => void;
+  forward: (seconds?: number) => void;
+  rewind: (seconds?: number) => void;
+  toggleMute: () => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
 }
 
 interface YouTubePlayerProps {
@@ -17,20 +29,105 @@ interface YouTubePlayerProps {
   onError?: (error: any) => void;
 }
 
-export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
+export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
   videoId,
   initialTime = 0,
   playbackRate = 1,
   onEnded,
   onTimeUpdate,
   onError,
-}) => {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const timeIntervalRef = useRef<number | null>(null);
   const endedFiredRef = useRef(false);
+
+  // Expose player methods to parent component
+  useImperativeHandle(ref, () => ({
+    seekTo: (seconds: number) => {
+      if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+        try {
+          playerRef.current.seekTo(Math.max(0, seconds), true);
+        } catch (e) {
+          console.warn('Erro ao buscar tempo no player:', e);
+        }
+      }
+    },
+    play: () => {
+      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        try {
+          playerRef.current.playVideo();
+        } catch (e) {}
+      }
+    },
+    pause: () => {
+      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+        try {
+          playerRef.current.pauseVideo();
+        } catch (e) {}
+      }
+    },
+    togglePlay: () => {
+      if (playerRef.current) {
+        try {
+          const state = playerRef.current.getPlayerState?.();
+          // State 1 is playing
+          if (state === 1) {
+            playerRef.current.pauseVideo?.();
+          } else {
+            playerRef.current.playVideo?.();
+          }
+        } catch (e) {}
+      }
+    },
+    forward: (seconds = 10) => {
+      if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        try {
+          const current = playerRef.current.getCurrentTime() || 0;
+          const dur = playerRef.current.getDuration() || 0;
+          const target = Math.min(dur, current + seconds);
+          playerRef.current.seekTo(target, true);
+        } catch (e) {}
+      }
+    },
+    rewind: (seconds = 10) => {
+      if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        try {
+          const current = playerRef.current.getCurrentTime() || 0;
+          const target = Math.max(0, current - seconds);
+          playerRef.current.seekTo(target, true);
+        } catch (e) {}
+      }
+    },
+    toggleMute: () => {
+      if (playerRef.current) {
+        try {
+          if (playerRef.current.isMuted?.()) {
+            playerRef.current.unMute?.();
+          } else {
+            playerRef.current.mute?.();
+          }
+        } catch (e) {}
+      }
+    },
+    getCurrentTime: () => {
+      try {
+        return playerRef.current?.getCurrentTime?.() || 0;
+      } catch {
+        return 0;
+      }
+    },
+    getDuration: () => {
+      try {
+        return playerRef.current?.getDuration?.() || 0;
+      } catch {
+        return 0;
+      }
+    },
+  }));
+
 
   // Load YouTube IFrame API script once
   useEffect(() => {
@@ -192,4 +289,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       )}
     </div>
   );
-};
+});
+
+YouTubePlayer.displayName = 'YouTubePlayer';
+

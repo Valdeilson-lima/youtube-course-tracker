@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Course, UserSettings } from '../types';
-import { YouTubePlayer } from './YouTubePlayer';
+import { YouTubePlayer, YouTubePlayerHandle } from './YouTubePlayer';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
+import { CourseCompletedModal } from './CourseCompletedModal';
 import { fireLessonConfetti, fireCourseCompletedConfetti } from '../utils/confetti';
 import { useToast } from '../context/ToastContext';
 import {
@@ -17,8 +19,94 @@ import {
   Flame,
   ListVideo,
   Play,
-  Share2,
+  Keyboard,
+  RotateCcw,
+  Trophy,
+  Eye,
+  Edit3,
 } from 'lucide-react';
+
+function formatTime(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  if (mins >= 60) {
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}:${String(remMins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+interface ParsedTimestamp {
+  raw: string;
+  label: string;
+  seconds: number;
+}
+
+function extractTimestamps(text: string): ParsedTimestamp[] {
+  if (!text) return [];
+  const regex = /\[?(\d{1,2}):(\d{2})(?::(\d{2}))?\]?/g;
+  const list: ParsedTimestamp[] = [];
+  const seen = new Set<number>();
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    let secs = 0;
+    let label = '';
+    if (match[3] !== undefined) {
+      // HH:MM:SS
+      const h = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      const s = parseInt(match[3], 10);
+      secs = h * 3600 + m * 60 + s;
+      label = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    } else {
+      // MM:SS
+      const m = parseInt(match[1], 10);
+      const s = parseInt(match[2], 10);
+      secs = m * 60 + s;
+      label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    if (!seen.has(secs)) {
+      seen.add(secs);
+      list.push({ raw: match[0], label, seconds: secs });
+    }
+  }
+  return list.sort((a, b) => a.seconds - b.seconds);
+}
+
+function renderTextWithClickableTimestamps(
+  text: string,
+  onSeek: (seconds: number) => void
+): React.ReactNode {
+  const regex = /(\[?\d{1,2}:\d{2}(?::\d{2})?\]?)/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    const timeMatch = part.match(/\[?(\d{1,2}):(\d{2})(?::(\d{2}))?\]?/);
+    if (timeMatch) {
+      let secs = 0;
+      if (timeMatch[3] !== undefined) {
+        secs = parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
+      } else {
+        secs = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+      }
+      return (
+        <button
+          key={index}
+          type="button"
+          onClick={() => onSeek(secs)}
+          className="inline-flex items-center px-1.5 py-0.5 mx-0.5 text-xs font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded hover:bg-amber-500/30 transition cursor-pointer"
+          title={`Pular para ${part}`}
+        >
+          {part}
+        </button>
+      );
+    }
+    return part;
+  });
+}
 
 interface ClassroomProps {
   course: Course;
@@ -34,6 +122,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
   onUpdateCourse,
 }) => {
   const toast = useToast();
+  const playerRef = useRef<YouTubePlayerHandle>(null);
 
   // Always keep an up-to-date ref of course to prevent stale closures
   const courseRef = useRef<Course>(course);
@@ -45,13 +134,19 @@ export const Classroom: React.FC<ClassroomProps> = ({
     course.currentLessonId || course.lessons[0]?.id || ''
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [lessonFilter, setLessonFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [activeTab, setActiveTab] = useState<'notes' | 'info'>('notes');
   const [mobileTab, setMobileTab] = useState<'video' | 'lessons' | 'notes'>('video');
   const [noteText, setNoteText] = useState('');
+  const [notesViewMode, setNotesViewMode] = useState<'edit' | 'preview'>('edit');
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(settings.playbackRate || 1);
   const [autoPlayNext, setAutoPlayNext] = useState<boolean>(settings.autoPlayNext);
+
+  // Modals state
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const [isCompletedModalOpen, setIsCompletedModalOpen] = useState(false);
 
   // Current active lesson
   const activeLessonIndex = course.lessons.findIndex((l) => l.id === activeLessonId);
@@ -68,47 +163,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Overall stats
   const totalLessons = course.lessons.length;
   const completedLessons = course.lessons.filter((l) => l.completed).length;
+  const pendingLessons = totalLessons - completedLessons;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-  // Handle lesson completion toggle
-  const toggleLessonCompletion = (lessonId: string, forceStatus?: boolean) => {
-    const currentLatest = courseRef.current;
-    const target = currentLatest.lessons.find((l) => l.id === lessonId);
-    if (!target) return;
-
-    const newStatus = forceStatus !== undefined ? forceStatus : !target.completed;
-    if (newStatus && !target.completed) {
-      fireLessonConfetti();
-      toast.success('Aula Concluída!', 'Seu progresso foi atualizado! 🎉');
-    } else if (!newStatus) {
-      toast.info('Aula Desmarcada', 'O status da aula voltou para pendente.');
-    }
-
-    const updatedLessons = currentLatest.lessons.map((lesson) => {
-      if (lesson.id === lessonId) {
-        return {
-          ...lesson,
-          completed: newStatus,
-          completedAt: newStatus ? new Date().toISOString() : undefined,
-        };
-      }
-      return lesson;
-    });
-
-    const newlyCompletedCount = updatedLessons.filter((l) => l.completed).length;
-    if (newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0) {
-      fireCourseCompletedConfetti();
-      toast.success('PARABÉNS! 🏆', `Você completou todas as ${currentLatest.lessons.length} aulas!`);
-    }
-
-    const updatedCourse: Course = {
-      ...currentLatest,
-      lessons: updatedLessons,
-      lastAccessedAt: new Date().toISOString(),
-    };
-
-    courseRef.current = updatedCourse;
-    onUpdateCourse(updatedCourse);
+  // Jump player to specific timestamp (Clickable Timestamps)
+  const handleSeekToTimestamp = (seconds: number) => {
+    playerRef.current?.seekTo(seconds);
+    setMobileTab('video');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast.info('Pulo no Vídeo', `Avançando para ${formatTime(seconds)}`);
   };
 
   // Switch to a new lesson
@@ -145,6 +208,50 @@ export const Classroom: React.FC<ClassroomProps> = ({
     }
   };
 
+  // Handle lesson completion toggle
+  const toggleLessonCompletion = (lessonId: string, forceStatus?: boolean) => {
+    const currentLatest = courseRef.current;
+    const target = currentLatest.lessons.find((l) => l.id === lessonId);
+    if (!target) return;
+
+    const newStatus = forceStatus !== undefined ? forceStatus : !target.completed;
+    if (newStatus && !target.completed) {
+      fireLessonConfetti();
+      toast.success('Aula Concluída!', 'Seu progresso foi atualizado! 🎉');
+    } else if (!newStatus) {
+      toast.info('Aula Desmarcada', 'O status da aula voltou para pendente.');
+    }
+
+    const updatedLessons = currentLatest.lessons.map((lesson) => {
+      if (lesson.id === lessonId) {
+        return {
+          ...lesson,
+          completed: newStatus,
+          completedAt: newStatus ? new Date().toISOString() : undefined,
+        };
+      }
+      return lesson;
+    });
+
+    const newlyCompletedCount = updatedLessons.filter((l) => l.completed).length;
+    const isNowAllCompleted = newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0;
+
+    if (isNowAllCompleted) {
+      fireCourseCompletedConfetti();
+      setIsCompletedModalOpen(true);
+      toast.success('PARABÉNS! 🏆', `Você completou todas as ${currentLatest.lessons.length} aulas!`);
+    }
+
+    const updatedCourse: Course = {
+      ...currentLatest,
+      lessons: updatedLessons,
+      lastAccessedAt: new Date().toISOString(),
+    };
+
+    courseRef.current = updatedCourse;
+    onUpdateCourse(updatedCourse);
+  };
+
   // Called automatically when YouTube video finishes
   const handleVideoEnded = () => {
     const currentLatest = courseRef.current;
@@ -165,8 +272,11 @@ export const Classroom: React.FC<ClassroomProps> = ({
     toast.success('Aula Concluída!', 'Progresso salvo com sucesso! 🎉');
 
     const newlyCompletedCount = updatedLessons.filter((l) => l.completed).length;
-    if (newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0) {
+    const isNowAllCompleted = newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0;
+
+    if (isNowAllCompleted) {
       fireCourseCompletedConfetti();
+      setIsCompletedModalOpen(true);
       toast.success('PARABÉNS! 🏆', `Você concluiu todas as ${currentLatest.lessons.length} aulas!`);
     }
 
@@ -203,7 +313,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
     }
   };
 
-  // Track position periodically
+  // Track position periodically (Resume Playback)
   const handleTimeUpdate = (curr: number, dur: number) => {
     setCurrentTime(curr);
     setVideoDuration(dur);
@@ -236,9 +346,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
   // Insert timestamp into notes
   const insertTimestamp = () => {
-    const mins = Math.floor(currentTime / 60);
-    const secs = Math.floor(currentTime % 60);
-    const timestampStr = `[${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}] `;
+    const currentSecs = playerRef.current?.getCurrentTime?.() ?? currentTime;
+    const timestampStr = `[${formatTime(currentSecs)}] `;
     handleSaveNotes(noteText + (noteText ? '\n' : '') + timestampStr);
     toast.info('Timestamp Inserido', `Momento ${timestampStr.trim()} adicionado nas anotações.`);
   };
@@ -264,10 +373,63 @@ export const Classroom: React.FC<ClassroomProps> = ({
     toast.success('Download Concluído', 'Suas anotações foram exportadas em formato Markdown (.md).');
   };
 
-  // Filter lessons in sidebar
-  const filteredLessons = course.lessons.filter((l) =>
-    l.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Global Keyboard shortcuts listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+      if (isInput) return;
+
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+      } else if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        playerRef.current?.togglePlay();
+      } else if (e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        playerRef.current?.rewind(10);
+        toast.info('Voltar 10s', '-10 segundos');
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        playerRef.current?.forward(10);
+        toast.info('Avançar 10s', '+10 segundos');
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        goToNextLesson();
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        goToPrevLesson();
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        toggleLessonCompletion(activeLessonId);
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        playerRef.current?.toggleMute();
+      } else if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        insertTimestamp();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeLessonId, noteText, currentTime]);
+
+  // Filter lessons in sidebar with both search query and completion filter
+  const filteredLessons = course.lessons.filter((l) => {
+    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (lessonFilter === 'pending') return !l.completed;
+    if (lessonFilter === 'completed') return l.completed;
+    return true;
+  });
+
+  const timestampsInNotes = extractTimestamps(noteText);
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col pb-safe">
@@ -299,23 +461,51 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
 
-        {/* Progress Display */}
+        {/* Top Bar Right: Shortcuts, Trophy, Progress Display */}
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] sm:text-xs font-bold text-white">
-            {completedLessons}/{totalLessons} ({progressPercent}%)
-          </span>
-          <div className="w-16 sm:w-28 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700/60">
-            <div
-              className={`h-full transition-all duration-500 rounded-full ${
-                progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-500'
-              }`}
-              style={{ width: `${progressPercent}%` }}
-            />
+          {/* Keyboard Shortcuts Button */}
+          <button
+            onClick={() => setIsShortcutsModalOpen(true)}
+            title="Ver atalhos de teclado (ou pressione ?)"
+            aria-label="Atalhos de teclado"
+            className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 min-h-[40px] active:scale-95"
+          >
+            <Keyboard className="w-4 h-4 text-slate-400" />
+            <span className="hidden sm:inline">Atalhos</span>
+            <kbd className="hidden md:inline px-1.5 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">?</kbd>
+          </button>
+
+          {/* 100% Celebration Trophy Button */}
+          {progressPercent === 100 && (
+            <button
+              onClick={() => setIsCompletedModalOpen(true)}
+              title="Ver certificado e comemoração de conclusão"
+              aria-label="Ver certificado de conclusão"
+              className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-amber-300 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-500/40 rounded-xl transition min-h-[40px] active:scale-95 shadow-md shadow-amber-500/10"
+            >
+              <Trophy className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span className="hidden sm:inline">Concluído</span>
+            </button>
+          )}
+
+          {/* Progress Bar */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] sm:text-xs font-bold text-white">
+              {completedLessons}/{totalLessons} ({progressPercent}%)
+            </span>
+            <div className="w-16 sm:w-28 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700/60">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation Segment Tabs (UI/UX standard for mobile video learning) */}
+      {/* Mobile Navigation Segment Tabs */}
       <div className="lg:hidden flex bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-1.5 gap-2 text-xs font-semibold sticky top-[52px] z-20">
         <button
           onClick={() => setMobileTab('video')}
@@ -363,19 +553,42 @@ export const Classroom: React.FC<ClassroomProps> = ({
             mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'
           }`}
         >
-          {/* YouTube Player */}
+          {/* YouTube Player & Resume notification */}
           {activeLesson && (
-            <YouTubePlayer
-              key={activeLesson.id}
-              videoId={activeLesson.id}
-              initialTime={activeLesson.lastPositionSeconds || 0}
-              playbackRate={playbackSpeed}
-              onEnded={handleVideoEnded}
-              onTimeUpdate={handleTimeUpdate}
-            />
+            <div className="space-y-2">
+              <YouTubePlayer
+                key={activeLesson.id}
+                ref={playerRef}
+                videoId={activeLesson.id}
+                initialTime={activeLesson.lastPositionSeconds || 0}
+                playbackRate={playbackSpeed}
+                onEnded={handleVideoEnded}
+                onTimeUpdate={handleTimeUpdate}
+              />
+
+              {/* Resume notification banner if position was saved */}
+              {activeLesson.lastPositionSeconds && activeLesson.lastPositionSeconds > 5 && (!activeLesson.completed || activeLesson.lastPositionSeconds < (videoDuration - 10)) && (
+                <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="truncate">
+                      Continuando de onde você parou: <strong className="text-white font-mono">{formatTime(activeLesson.lastPositionSeconds)}</strong>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleSeekToTimestamp(0)}
+                    className="flex items-center gap-1 text-slate-400 hover:text-white transition underline underline-offset-2 ml-2 shrink-0 active:scale-95"
+                    title="Reiniciar aula do início"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Reiniciar</span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Action and Navigation Controls (Mobile Optimized 2-row layout with 8px+ spacing) */}
+          {/* Action and Navigation Controls */}
           <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
             {/* Row 1: Anterior, Concluir, Próxima */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -480,7 +693,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
             </div>
           )}
 
-          {/* Notes and Info on Desktop (or when mobile tab is notes) */}
+          {/* Notes and Info on Desktop */}
           <div className="hidden lg:block bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-3">
@@ -510,13 +723,39 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
               {activeTab === 'notes' && (
                 <div className="flex items-center gap-2">
+                  {/* Toggle Edit / Preview */}
+                  <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                    <button
+                      onClick={() => setNotesViewMode('edit')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition ${
+                        notesViewMode === 'edit'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      onClick={() => setNotesViewMode('preview')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition ${
+                        notesViewMode === 'preview'
+                          ? 'bg-slate-800 text-white font-medium'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Visualizar</span>
+                    </button>
+                  </div>
+
                   <button
                     onClick={insertTimestamp}
-                    title="Inserir timestamp atual do vídeo"
+                    title="Inserir timestamp atual do vídeo (Atalho: T)"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700 active:scale-95"
                   >
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Timestamp</span>
+                    <span>Timestamp [T]</span>
                   </button>
                   <button
                     onClick={downloadCourseNotes}
@@ -530,14 +769,44 @@ export const Classroom: React.FC<ClassroomProps> = ({
             </div>
 
             {activeTab === 'notes' ? (
-              <div>
-                <textarea
-                  value={noteText}
-                  onChange={(e) => handleSaveNotes(e.target.value)}
-                  placeholder="Escreva suas anotações, resumo e insights desta aula aqui..."
-                  rows={5}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition"
-                />
+              <div className="space-y-3">
+                {/* Clickable Timestamps Pills */}
+                {timestampsInNotes.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                    <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 shrink-0">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" /> Marcadores clicáveis:
+                    </span>
+                    {timestampsInNotes.map((ts, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSeekToTimestamp(ts.seconds)}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg transition active:scale-95 cursor-pointer shadow-sm"
+                        title={`Clique para pular para ${ts.label}`}
+                      >
+                        <span>⏱️ {ts.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {notesViewMode === 'edit' ? (
+                  <textarea
+                    value={noteText}
+                    onChange={(e) => handleSaveNotes(e.target.value)}
+                    placeholder="Escreva suas anotações, resumo e insights desta aula aqui... Marcadores de tempo como [02:30] ficam clicáveis para pular no vídeo!"
+                    rows={6}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition"
+                  />
+                ) : (
+                  <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-200 font-mono min-h-[140px] whitespace-pre-wrap leading-relaxed">
+                    {noteText ? (
+                      renderTextWithClickableTimestamps(noteText, handleSeekToTimestamp)
+                    ) : (
+                      <span className="text-slate-600 italic">Nenhuma anotação nesta aula ainda. Clique em Editar para escrever.</span>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3 text-xs sm:text-sm text-slate-300">
@@ -576,6 +845,25 @@ export const Classroom: React.FC<ClassroomProps> = ({
               </div>
             </div>
 
+            {/* Mobile Timestamps list */}
+            {timestampsInNotes.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 shrink-0">
+                  <Clock className="w-3 h-3 text-amber-400" /> Pular:
+                </span>
+                {timestampsInNotes.map((ts, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSeekToTimestamp(ts.seconds)}
+                    className="px-2 py-1 text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg active:scale-95"
+                  >
+                    ⏱️ {ts.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <textarea
               value={noteText}
               onChange={(e) => handleSaveNotes(e.target.value)}
@@ -586,19 +874,53 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Lessons Sidebar (Full on desktop, or when mobileTab === 'lessons') */}
+        {/* Right Column: Lessons Sidebar */}
         <div
           className={`w-full lg:w-96 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 ${
             mobileTab === 'lessons' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          {/* Sidebar Header */}
+          {/* Sidebar Header with Filter Tabs and Search */}
           <div className="p-3 sm:p-4 border-b border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xs sm:text-sm text-white">Conteúdo das Aulas</h3>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 {completedLessons}/{totalLessons} concluídas
               </span>
+            </div>
+
+            {/* Filter Tabs: Todas, Pendentes, Concluídas */}
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800/80 text-xs">
+              <button
+                onClick={() => setLessonFilter('all')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition ${
+                  lessonFilter === 'all'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Todas ({totalLessons})
+              </button>
+              <button
+                onClick={() => setLessonFilter('pending')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition ${
+                  lessonFilter === 'pending'
+                    ? 'bg-amber-950/70 text-amber-300 border border-amber-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Pendentes ({pendingLessons})
+              </button>
+              <button
+                onClick={() => setLessonFilter('completed')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition ${
+                  lessonFilter === 'completed'
+                    ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Concluídas ({completedLessons})
+              </button>
             </div>
 
             {/* Search Input */}
@@ -614,7 +936,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
             </div>
           </div>
 
-          {/* Lessons List (Each target min-h-48px with 8px+ spacing) */}
+          {/* Lessons List */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 p-2 space-y-1.5">
             {filteredLessons.map((lesson) => {
               const originalIndex = course.lessons.findIndex((l) => l.id === lesson.id);
@@ -634,7 +956,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                       : 'hover:bg-slate-800/60 border border-transparent active:bg-slate-800/80'
                   }`}
                 >
-                  {/* Checkbox button (44px touch area) */}
+                  {/* Checkbox button */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -690,13 +1012,39 @@ export const Classroom: React.FC<ClassroomProps> = ({
             })}
 
             {filteredLessons.length === 0 && (
-              <div className="p-8 text-center text-xs text-slate-500">
-                Nenhuma aula encontrada com esse termo.
+              <div className="p-8 text-center text-xs text-slate-500 space-y-2">
+                <p>Nenhuma aula encontrada para este filtro.</p>
+                {(searchQuery || lessonFilter !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setLessonFilter('all');
+                    }}
+                    className="text-red-400 hover:underline font-semibold"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
+      {/* Course Completed Celebration Modal */}
+      <CourseCompletedModal
+        course={course}
+        isOpen={isCompletedModalOpen}
+        onClose={() => setIsCompletedModalOpen(false)}
+        onDownloadNotes={downloadCourseNotes}
+        onBackToDashboard={onBack}
+      />
     </div>
   );
 };
