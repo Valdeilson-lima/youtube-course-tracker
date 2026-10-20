@@ -30,6 +30,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const timeIntervalRef = useRef<number | null>(null);
+  const endedFiredRef = useRef(false);
 
   // Load YouTube IFrame API script once
   useEffect(() => {
@@ -43,6 +44,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
   // Initialize or update player when videoId changes
   useEffect(() => {
+    endedFiredRef.current = false;
     let playerInstance: any = null;
     let isCancelled = false;
 
@@ -108,7 +110,10 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           onStateChange: (event: any) => {
             // YT.PlayerState.ENDED is 0
             if (event.data === 0) {
-              onEnded();
+              if (!endedFiredRef.current) {
+                endedFiredRef.current = true;
+                onEnded();
+              }
             }
           },
           onError: (err: any) => {

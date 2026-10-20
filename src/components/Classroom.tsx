@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Course, UserSettings } from '../types';
 import { YouTubePlayer } from './YouTubePlayer';
 import { fireLessonConfetti, fireCourseCompletedConfetti } from '../utils/confetti';
@@ -17,7 +17,6 @@ import {
   Flame,
   ListVideo,
   Play,
-  RotateCcw,
 } from 'lucide-react';
 
 interface ClassroomProps {
@@ -34,6 +33,13 @@ export const Classroom: React.FC<ClassroomProps> = ({
   onUpdateCourse,
 }) => {
   const toast = useToast();
+
+  // Always keep an up-to-date ref of course to prevent stale closures
+  const courseRef = useRef<Course>(course);
+  useEffect(() => {
+    courseRef.current = course;
+  }, [course]);
+
   const [activeLessonId, setActiveLessonId] = useState<string>(
     course.currentLessonId || course.lessons[0]?.id || ''
   );
@@ -64,15 +70,20 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
   // Handle lesson completion toggle
   const toggleLessonCompletion = (lessonId: string, forceStatus?: boolean) => {
-    const updatedLessons = course.lessons.map((lesson) => {
+    const currentLatest = courseRef.current;
+    const target = currentLatest.lessons.find((l) => l.id === lessonId);
+    if (!target) return;
+
+    const newStatus = forceStatus !== undefined ? forceStatus : !target.completed;
+    if (newStatus && !target.completed) {
+      fireLessonConfetti();
+      toast.success('Aula Concluída!', 'Seu progresso foi atualizado! 🎉');
+    } else if (!newStatus) {
+      toast.info('Aula Desmarcada', 'O status da aula voltou para pendente.');
+    }
+
+    const updatedLessons = currentLatest.lessons.map((lesson) => {
       if (lesson.id === lessonId) {
-        const newStatus = forceStatus !== undefined ? forceStatus : !lesson.completed;
-        if (newStatus && !lesson.completed) {
-          fireLessonConfetti();
-          toast.success('Aula Concluída!', 'Seu progresso foi atualizado! 🎉');
-        } else if (!newStatus) {
-          toast.info('Aula Desmarcada', 'O status da aula voltou para pendente.');
-        }
         return {
           ...lesson,
           completed: newStatus,
@@ -83,17 +94,18 @@ export const Classroom: React.FC<ClassroomProps> = ({
     });
 
     const newlyCompletedCount = updatedLessons.filter((l) => l.completed).length;
-    if (newlyCompletedCount === totalLessons && totalLessons > 0) {
+    if (newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0) {
       fireCourseCompletedConfetti();
-      toast.success('PARABÉNS! 🏆', `Você completou todas as ${totalLessons} aulas deste curso!`);
+      toast.success('PARABÉNS! 🏆', `Você completou todas as ${currentLatest.lessons.length} aulas!`);
     }
 
     const updatedCourse: Course = {
-      ...course,
+      ...currentLatest,
       lessons: updatedLessons,
       lastAccessedAt: new Date().toISOString(),
     };
 
+    courseRef.current = updatedCourse;
     onUpdateCourse(updatedCourse);
   };
 
@@ -103,38 +115,91 @@ export const Classroom: React.FC<ClassroomProps> = ({
     setMobileTab('video');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    const currentLatest = courseRef.current;
     const updatedCourse: Course = {
-      ...course,
+      ...currentLatest,
       currentLessonId: lessonId,
       lastAccessedAt: new Date().toISOString(),
     };
+
+    courseRef.current = updatedCourse;
     onUpdateCourse(updatedCourse);
   };
 
   // Navigate next / previous
   const goToNextLesson = () => {
-    if (activeLessonIndex < totalLessons - 1) {
-      selectLesson(course.lessons[activeLessonIndex + 1].id);
+    const currentLatest = courseRef.current;
+    const currentIdx = currentLatest.lessons.findIndex((l) => l.id === activeLessonId);
+    if (currentIdx < currentLatest.lessons.length - 1) {
+      selectLesson(currentLatest.lessons[currentIdx + 1].id);
     }
   };
 
   const goToPrevLesson = () => {
-    if (activeLessonIndex > 0) {
-      selectLesson(course.lessons[activeLessonIndex - 1].id);
+    const currentLatest = courseRef.current;
+    const currentIdx = currentLatest.lessons.findIndex((l) => l.id === activeLessonId);
+    if (currentIdx > 0) {
+      selectLesson(currentLatest.lessons[currentIdx - 1].id);
     }
   };
 
   // Called automatically when YouTube video finishes
   const handleVideoEnded = () => {
-    if (settings.autoMarkCompleted && activeLesson && !activeLesson.completed) {
-      toggleLessonCompletion(activeLesson.id, true);
+    const currentLatest = courseRef.current;
+    const currentLesson = currentLatest.lessons.find((l) => l.id === activeLessonId);
+
+    // 1. Marca a aula atual como CONCLUÍDA de forma definitiva
+    const updatedLessons = currentLatest.lessons.map((lesson) => {
+      if (lesson.id === activeLessonId) {
+        return {
+          ...lesson,
+          completed: true,
+          completedAt: new Date().toISOString(),
+        };
+      }
+      return lesson;
+    });
+
+    fireLessonConfetti();
+    toast.success('Aula Concluída!', 'Progresso salvo com sucesso! 🎉');
+
+    const newlyCompletedCount = updatedLessons.filter((l) => l.completed).length;
+    if (newlyCompletedCount === currentLatest.lessons.length && currentLatest.lessons.length > 0) {
+      fireCourseCompletedConfetti();
+      toast.success('PARABÉNS! 🏆', `Você concluiu todas as ${currentLatest.lessons.length} aulas!`);
     }
 
-    if (autoPlayNext && activeLessonIndex < totalLessons - 1) {
-      toast.info('Avanço Automático', 'Carregando a próxima aula em instantes...');
+    const currentIdx = currentLatest.lessons.findIndex((l) => l.id === activeLessonId);
+    const hasNext = currentIdx < currentLatest.lessons.length - 1;
+    const nextLessonId = hasNext ? currentLatest.lessons[currentIdx + 1].id : activeLessonId;
+
+    if (autoPlayNext && hasNext) {
+      // Atualiza o curso mantendo a aula concluída e avançando para a próxima
+      const updatedCourse: Course = {
+        ...currentLatest,
+        lessons: updatedLessons,
+        currentLessonId: nextLessonId,
+        lastAccessedAt: new Date().toISOString(),
+      };
+
+      courseRef.current = updatedCourse;
+      onUpdateCourse(updatedCourse);
+
+      toast.info('Avanço Automático', 'Iniciando próxima aula em instantes...');
+
       setTimeout(() => {
-        goToNextLesson();
+        setActiveLessonId(nextLessonId);
+        setMobileTab('video');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 1200);
+    } else {
+      const updatedCourse: Course = {
+        ...currentLatest,
+        lessons: updatedLessons,
+        lastAccessedAt: new Date().toISOString(),
+      };
+      courseRef.current = updatedCourse;
+      onUpdateCourse(updatedCourse);
     }
   };
 
@@ -143,23 +208,30 @@ export const Classroom: React.FC<ClassroomProps> = ({
     setCurrentTime(curr);
     setVideoDuration(dur);
 
-    // Save position periodically in lesson
-    if (activeLesson && Math.abs((activeLesson.lastPositionSeconds || 0) - curr) > 5) {
-      const updatedLessons = course.lessons.map((l) =>
-        l.id === activeLesson.id ? { ...l, lastPositionSeconds: Math.floor(curr) } : l
+    const currentLatest = courseRef.current;
+    const lesson = currentLatest.lessons.find((l) => l.id === activeLessonId);
+
+    // Save position periodically in lesson without touching completed status
+    if (lesson && Math.abs((lesson.lastPositionSeconds || 0) - curr) > 5) {
+      const updatedLessons = currentLatest.lessons.map((l) =>
+        l.id === activeLessonId ? { ...l, lastPositionSeconds: Math.floor(curr) } : l
       );
-      onUpdateCourse({ ...course, lessons: updatedLessons });
+      const updatedCourse = { ...currentLatest, lessons: updatedLessons };
+      courseRef.current = updatedCourse;
+      onUpdateCourse(updatedCourse);
     }
   };
 
   // Save notes
   const handleSaveNotes = (text: string) => {
     setNoteText(text);
-    if (!activeLesson) return;
-    const updatedLessons = course.lessons.map((l) =>
-      l.id === activeLesson.id ? { ...l, notes: text } : l
+    const currentLatest = courseRef.current;
+    const updatedLessons = currentLatest.lessons.map((l) =>
+      l.id === activeLessonId ? { ...l, notes: text } : l
     );
-    onUpdateCourse({ ...course, lessons: updatedLessons });
+    const updatedCourse = { ...currentLatest, lessons: updatedLessons };
+    courseRef.current = updatedCourse;
+    onUpdateCourse(updatedCourse);
   };
 
   // Insert timestamp into notes
