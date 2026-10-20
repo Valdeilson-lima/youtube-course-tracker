@@ -536,8 +536,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col pb-safe">
       {/* Top Bar (Height responsive: top-14 on mobile, top-16 on desktop) */}
-      <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-14 sm:top-16 z-30 flex items-center justify-between gap-3 shadow-md">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 sticky top-14 sm:top-16 z-30 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shadow-md">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button
             onClick={onBack}
             aria-label="Voltar para a lista de cursos"
@@ -568,7 +568,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </div>
 
         {/* Top Bar Right: Toggle Sidebar, Sync Playlist, Shortcuts, Trophy, Progress Display */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 max-w-full overflow-x-auto no-scrollbar pb-0.5">
           {/* Toggle Lessons List Sidebar Button */}
           <button
             onClick={toggleLessonsSidebar}
@@ -725,11 +725,11 @@ export const Classroom: React.FC<ClassroomProps> = ({
       )}
 
       {/* Main Content Layout (Theater Mode or Closed Sidebar expands max-w) */}
-      <div className="flex-1 flex flex-col lg:flex-row">
+      <div className="flex-1 flex flex-col lg:flex-row min-w-0 w-full">
         {/* Left Column (Video & Player) */}
         <div
-          className={`flex-1 p-2 sm:p-6 lg:p-8 flex flex-col gap-3 sm:gap-6 transition-all duration-300 ${
-            isTheaterMode || !isLessonsSidebarOpen ? 'w-full max-w-7xl mx-auto' : 'max-w-5xl'
+          className={`flex-1 min-w-0 p-2 sm:p-6 lg:p-8 flex flex-col gap-3 sm:gap-6 transition-all duration-300 ${
+            isTheaterMode || !isLessonsSidebarOpen ? 'w-full max-w-7xl mx-auto' : 'w-full max-w-none'
           } ${mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'} ${
             isLightsOff ? 'relative z-[60]' : ''
           }`}
@@ -1099,7 +1099,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
         <div
           className={`w-full ${
             isTheaterMode ? 'lg:w-80' : 'lg:w-96'
-          } bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 transition-all duration-300 ${
+          } shrink-0 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 transition-all duration-300 ${
             !isLessonsSidebarOpen
               ? 'hidden'
               : mobileTab === 'lessons'

@@ -3,7 +3,7 @@ import { Course } from '../types';
 
 export const SUPABASE_SQL_SCHEMA = `-- 1. Execute este script no SQL Editor do seu projeto Supabase:
 
--- Cria a tabela de cursos
+-- Cria a tabela de cursos se não existir
 create table if not exists public.courses (
   id text primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -19,8 +19,24 @@ create table if not exists public.courses (
   last_accessed_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- Garante que todas as colunas existem mesmo se a tabela foi criada anteriormente:
+alter table public.courses add column if not exists playlist_id text default '';
+alter table public.courses add column if not exists description text default '';
+alter table public.courses add column if not exists channel_title text default '';
+alter table public.courses add column if not exists thumbnail_url text default '';
+alter table public.courses add column if not exists category text default 'Geral';
+alter table public.courses add column if not exists current_lesson_id text default '';
+alter table public.courses add column if not exists lessons jsonb default '[]'::jsonb;
+alter table public.courses add column if not exists last_accessed_at timestamp with time zone default timezone('utc'::text, now());
+
 -- Habilita Row Level Security (RLS) para proteger os dados de cada usuário
 alter table public.courses enable row level security;
+
+-- Permite executar este script novamente sem erro de política já existente
+drop policy if exists "Usuários podem visualizar seus próprios cursos" on public.courses;
+drop policy if exists "Usuários podem inserir seus próprios cursos" on public.courses;
+drop policy if exists "Usuários podem atualizar seus próprios cursos" on public.courses;
+drop policy if exists "Usuários podem deletar seus próprios cursos" on public.courses;
 
 -- Política de Leitura/Gravação restrita ao próprio usuário autenticado
 create policy "Usuários podem visualizar seus próprios cursos"
@@ -33,7 +49,8 @@ create policy "Usuários podem inserir seus próprios cursos"
 
 create policy "Usuários podem atualizar seus próprios cursos"
   on public.courses for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 create policy "Usuários podem deletar seus próprios cursos"
   on public.courses for delete
@@ -135,13 +152,13 @@ export async function syncCoursesFromCloud(userId: string): Promise<Course[]> {
 }
 
 /**
- * Salva ou atualiza um curso no Supabase
+ * Salva ou atualiza um curso no Supabase com resiliência a esquemas legados
  */
 export async function saveCourseToCloud(course: Course, userId: string): Promise<void> {
   const client = getSupabaseClient();
   if (!client) return;
 
-  const payload = {
+  const payload: any = {
     id: course.id,
     user_id: userId,
     playlist_id: course.playlistId,
@@ -155,7 +172,20 @@ export async function saveCourseToCloud(course: Course, userId: string): Promise
     last_accessed_at: course.lastAccessedAt || new Date().toISOString(),
   };
 
-  const { error } = await client.from('courses').upsert(payload, { onConflict: 'id' });
+  let { error } = await client.from('courses').upsert(payload, { onConflict: 'id' });
+
+  // Se o Supabase falhar porque a coluna 'category' não existe no schema cache do banco antigo (PGRST204)
+  if (error && (error.code === 'PGRST204' || error.message?.includes('category'))) {
+    console.warn(
+      'A coluna "category" não foi encontrada na tabela courses do Supabase. Salvando em modo compatibilidade...',
+      error.message
+    );
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.category;
+    const retry = await client.from('courses').upsert(fallbackPayload, { onConflict: 'id' });
+    error = retry.error;
+  }
+
   if (error) {
     console.error('Erro ao salvar curso no Supabase:', error);
     throw error;
@@ -177,10 +207,59 @@ export async function deleteCourseFromCloud(courseId: string, userId: string): P
 }
 
 /**
+ * Mescla de forma inteligente o estado local e em nuvem de um curso:
+ * - Preserva aulas marcadas como concluídas em qualquer um dos lados.
+ * - Preserva a maior minutagem assistida (lastPositionSeconds).
+ * - Preserva as notas de estudo digitadas.
+ * - Adiciona aulas novas identificadas em qualquer lado.
+ */
+function mergeCourses(local: Course, cloud: Course): Course {
+  const localDate = new Date(local.lastAccessedAt || 0).getTime();
+  const cloudDate = new Date(cloud.lastAccessedAt || 0).getTime();
+  const mostRecentDate = localDate >= cloudDate ? local.lastAccessedAt : cloud.lastAccessedAt;
+
+  const cloudLessonMap = new Map((cloud.lessons || []).map((l) => [l.id, l]));
+  const mergedLessons = (local.lessons || []).map((localLesson) => {
+    const cloudLesson = cloudLessonMap.get(localLesson.id);
+    if (!cloudLesson) return localLesson;
+
+    return {
+      ...localLesson,
+      completed: Boolean(localLesson.completed || cloudLesson.completed),
+      lastPositionSeconds: Math.max(
+        localLesson.lastPositionSeconds || 0,
+        cloudLesson.lastPositionSeconds || 0
+      ),
+      notes: localLesson.notes?.trim() ? localLesson.notes : cloudLesson.notes || '',
+    };
+  });
+
+  // Inclui eventuais aulas da nuvem que ainda não estavam no cliente local
+  const localLessonIdSet = new Set((local.lessons || []).map((l) => l.id));
+  for (const cloudLesson of cloud.lessons || []) {
+    if (!localLessonIdSet.has(cloudLesson.id)) {
+      mergedLessons.push(cloudLesson);
+    }
+  }
+
+  return {
+    ...cloud,
+    ...local,
+    category: local.category || cloud.category || 'Geral',
+    lessons: mergedLessons,
+    currentLessonId:
+      localDate >= cloudDate
+        ? local.currentLessonId || cloud.currentLessonId
+        : cloud.currentLessonId || local.currentLessonId,
+    lastAccessedAt: mostRecentDate,
+  };
+}
+
+/**
  * Sincronização inteligente bidirecional:
  * 1. Baixa os cursos da nuvem.
- * 2. Se a nuvem estiver vazia e o usuário tiver cursos locais, sobe todos os locais para a nuvem!
- * 3. Se ambos tiverem cursos, mescla os locais que faltam na nuvem.
+ * 2. Faz o merge refinado de progresso, aulas e anotações.
+ * 3. Envia os cursos novos ou atualizados para o Supabase.
  */
 export async function syncAllCoursesWithCloud(
   localCourses: Course[],
@@ -191,25 +270,47 @@ export async function syncAllCoursesWithCloud(
 
   const cloudCourses = await syncCoursesFromCloud(userId);
 
-  if (cloudCourses.length > 0) {
-    // Cloud tem cursos. Se local tiver algum curso que ainda não está na nuvem, faz upload.
-    const cloudIds = new Set(cloudCourses.map((c) => c.id));
-    for (const local of localCourses) {
-      if (!cloudIds.has(local.id)) {
-        await saveCourseToCloud(local, userId).catch(console.error);
-        cloudCourses.push(local);
+  const cloudMap = new Map<string, Course>(cloudCourses.map((c) => [c.id, c]));
+  const mergedCourses: Course[] = [];
+
+  // 1. Processa todos os cursos locais
+  for (const local of localCourses) {
+    const cloud = cloudMap.get(local.id);
+    if (!cloud) {
+      // Curso existe localmente mas ainda não na nuvem: sobe para o Supabase
+      try {
+        await saveCourseToCloud(local, userId);
+      } catch (err) {
+        console.warn(`[Sync] Falha ao subir curso local "${local.title}":`, err);
       }
+      mergedCourses.push(local);
+    } else {
+      // Curso existe em ambos: mescla progresso e anotações
+      const merged = mergeCourses(local, cloud);
+      mergedCourses.push(merged);
+
+      // Se o curso mesclado tiver dados novos em relação à nuvem, sincroniza
+      const needsCloudUpdate =
+        JSON.stringify(merged.lessons) !== JSON.stringify(cloud.lessons) ||
+        merged.category !== cloud.category ||
+        merged.currentLessonId !== cloud.currentLessonId;
+
+      if (needsCloudUpdate) {
+        try {
+          await saveCourseToCloud(merged, userId);
+        } catch (err) {
+          console.warn(`[Sync] Falha ao atualizar curso mesclado "${merged.title}":`, err);
+        }
+      }
+
+      cloudMap.delete(local.id);
     }
-    return cloudCourses;
   }
 
-  // Cloud está vazia. Se local tiver cursos, sobe TODOS para o Supabase!
-  if (localCourses.length > 0) {
-    for (const local of localCourses) {
-      await saveCourseToCloud(local, userId).catch(console.error);
-    }
-    return localCourses;
+  // 2. Adiciona cursos que estavam salvos na nuvem mas não no dispositivo local
+  for (const [, cloud] of cloudMap) {
+    mergedCourses.push(cloud);
   }
 
-  return [];
+  return mergedCourses;
 }

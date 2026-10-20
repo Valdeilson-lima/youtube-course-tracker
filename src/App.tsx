@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Course, UserSettings } from './types';
 import {
   loadCourses,
   saveCourses,
   loadSettings,
   saveSettings,
-  INITIAL_DEMO_COURSES,
   DEFAULT_SETTINGS,
 } from './utils/storage';
 import {
@@ -39,11 +38,37 @@ const AppContent: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const coursesRef = useRef(courses);
 
 
   // Supabase Auth state
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    coursesRef.current = courses;
+  }, [courses]);
+
+  // Se o usuário deslogar enquanto estiver dentro de uma sala de aula, volta ao dashboard
+  useEffect(() => {
+    if (!user && currentCourseId) {
+      setCurrentCourseId(null);
+    }
+  }, [user, currentCourseId]);
+
+  // Helper para exigir login antes de qualquer ação
+  const requireAuth = (action: () => void, promptMessage?: string): boolean => {
+    if (!user) {
+      if (promptMessage) {
+        toast.info('Login Necessário', promptMessage);
+      }
+      setIsAuthModalOpen(true);
+      return false;
+    }
+    action();
+    return true;
+  };
 
   // Listen to PWA install prompt
   useEffect(() => {
@@ -60,8 +85,8 @@ const AppContent: React.FC = () => {
   const handleCloudSync = async (userId: string, showToast = false) => {
     setIsSyncing(true);
     try {
-      const mergedCourses = await syncAllCoursesWithCloud(courses, userId);
-      if (mergedCourses && mergedCourses.length > 0) {
+      const mergedCourses = await syncAllCoursesWithCloud(coursesRef.current, userId);
+      if (Array.isArray(mergedCourses)) {
         setCourses(mergedCourses);
         saveCourses(mergedCourses);
       }
@@ -71,7 +96,8 @@ const AppContent: React.FC = () => {
     } catch (err: any) {
       console.error('Falha na sincronização:', err);
       if (showToast) {
-        toast.error('Erro na sincronização', 'Verifique sua conexão ou tente novamente.');
+        const message = err instanceof Error ? err.message : 'Verifique sua conexão ou tente novamente.';
+        toast.error('Erro na sincronização', message);
       }
     } finally {
       setIsSyncing(false);
@@ -81,13 +107,19 @@ const AppContent: React.FC = () => {
   // Listen to Supabase Auth changes
   useEffect(() => {
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setIsAuthChecking(false);
+      return;
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         handleCloudSync(session.user.id);
       }
+      setIsAuthChecking(false);
+    }).catch(() => {
+      setIsAuthChecking(false);
     });
 
     const {
@@ -97,6 +129,7 @@ const AppContent: React.FC = () => {
       if (session?.user) {
         handleCloudSync(session.user.id, true);
       }
+      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -117,7 +150,17 @@ const AppContent: React.FC = () => {
 
   // Handlers
   const handleSelectCourse = (course: Course) => {
-    setCurrentCourseId(course.id);
+    requireAuth(
+      () => setCurrentCourseId(course.id),
+      'Faça login ou crie sua conta para assistir às aulas e salvar seu progresso.'
+    );
+  };
+
+  const handleOpenAddModal = () => {
+    requireAuth(
+      () => setIsAddModalOpen(true),
+      'Faça login ou crie sua conta para adicionar novos cursos e playlists.'
+    );
   };
 
   const handleBackToDashboard = () => {
@@ -125,45 +168,62 @@ const AppContent: React.FC = () => {
   };
 
   const handleUpdateCourse = (updatedCourse: Course) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para salvar alterações no curso.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) =>
       prev.map((c) => (c.id === updatedCourse.id ? updatedCourse : c))
     );
 
-    // If logged in, sync to Supabase
-    if (user) {
-      saveCourseToCloud(updatedCourse, user.id).catch((err) =>
-        console.error('Falha ao atualizar curso na nuvem:', err)
-      );
-    }
+    saveCourseToCloud(updatedCourse, user.id).catch((err) =>
+      console.error('Falha ao atualizar curso na nuvem:', err)
+    );
   };
 
   const handleUpdateCourseCategory = (courseId: string, newCategory: string) => {
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id === courseId) {
-          const updated = { ...c, category: newCategory };
-          if (user) {
-            saveCourseToCloud(updated, user.id).catch(console.error);
-          }
-          return updated;
-        }
-        return c;
-      })
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para editar a categoria.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    const course = courses.find((c) => c.id === courseId);
+    if (!course) return;
+
+    const updated = { ...course, category: newCategory };
+    setCourses((prev) => prev.map((c) => (c.id === courseId ? updated : c)));
+
+    saveCourseToCloud(updated, user.id).catch((err) =>
+      console.error('Falha ao salvar categoria na nuvem:', err)
     );
   };
 
   const handleDeleteCourse = (courseId: string) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para excluir cursos.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) => prev.filter((c) => c.id !== courseId));
     if (currentCourseId === courseId) {
       setCurrentCourseId(null);
     }
 
-    if (user) {
-      deleteCourseFromCloud(courseId, user.id).catch(console.error);
-    }
+    deleteCourseFromCloud(courseId, user.id).catch(console.error);
+    toast.info('Curso Removido', 'O curso foi excluído com sucesso.');
   };
 
   const handleResetCourseProgress = (courseId: string) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para gerenciar o progresso.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id === courseId) {
@@ -176,9 +236,7 @@ const AppContent: React.FC = () => {
               lastPositionSeconds: 0,
             })),
           };
-          if (user) {
-            saveCourseToCloud(updated, user.id).catch(console.error);
-          }
+          saveCourseToCloud(updated, user.id).catch(console.error);
           return updated;
         }
         return c;
@@ -187,42 +245,47 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddCourse = (newCourse: Course) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para adicionar cursos.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) => [newCourse, ...prev]);
     setCurrentCourseId(newCourse.id);
     toast.success('Curso Adicionado!', `"${newCourse.title}" foi importado com sucesso.`);
 
-    if (user) {
-      saveCourseToCloud(newCourse, user.id)
-        .then(() => toast.info('Salvo na Nuvem', 'Curso sincronizado com o Supabase.'))
-        .catch((err) => console.error('Falha ao salvar na nuvem:', err));
-    }
-  };
-
-  const handleLoadDemoCourses = () => {
-    setCourses(INITIAL_DEMO_COURSES);
-    saveCourses(INITIAL_DEMO_COURSES);
-    toast.success('Cursos Carregados', 'Cursos de demonstração restaurados.');
-    if (user) {
-      INITIAL_DEMO_COURSES.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
-    }
+    saveCourseToCloud(newCourse, user.id)
+      .then(() => toast.info('Salvo na Nuvem', 'Curso sincronizado com o Supabase.'))
+      .catch((err) => console.error('Falha ao salvar na nuvem:', err));
   };
 
   const handleResetAllData = () => {
-    setCourses(INITIAL_DEMO_COURSES);
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para gerenciar dados.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setCourses([]);
     setSettings(DEFAULT_SETTINGS);
-    saveCourses(INITIAL_DEMO_COURSES);
+    saveCourses([]);
     saveSettings(DEFAULT_SETTINGS);
     setCurrentCourseId(null);
     toast.info('Dados Restaurados', 'As configurações e cursos voltaram aos padrões.');
   };
 
   const handleImportCourses = (imported: Course[]) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para importar cursos.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses(imported);
     saveCourses(imported);
     toast.success('Backup Restaurado', `${imported.length} cursos foram importados.`);
-    if (user) {
-      imported.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
-    }
+    imported.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
   };
 
   const handleInstallPWA = () => {
@@ -236,6 +299,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleSyncCoursePlaylist = async (course: Course) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para buscar novidades na playlist.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       toast.info('Sincronizando Playlist', `Buscando novidades para "${course.title}"...`);
       const { updatedCourse, addedCount } = await syncCoursePlaylist(course, settings.youtubeApiKey);
@@ -251,7 +320,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="study-shell min-h-screen text-slate-100 flex flex-col font-sans">
       <OfflineBanner onReconnected={() => user && handleCloudSync(user.id, false)} />
 
       <Header
@@ -261,7 +330,7 @@ const AppContent: React.FC = () => {
         isSyncing={isSyncing}
         streak={streak}
         onBackToDashboard={handleBackToDashboard}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
+        onOpenAddModal={handleOpenAddModal}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenStreakModal={() => setIsStreakModalOpen(true)}
@@ -296,12 +365,13 @@ const AppContent: React.FC = () => {
         ) : (
           <CourseList
             courses={courses}
+            user={user}
             onSelectCourse={handleSelectCourse}
             onDeleteCourse={handleDeleteCourse}
             onResetCourseProgress={handleResetCourseProgress}
             onUpdateCourseCategory={handleUpdateCourseCategory}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onLoadDemoCourses={handleLoadDemoCourses}
+            onOpenAddModal={handleOpenAddModal}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
             onSyncCoursePlaylist={handleSyncCoursePlaylist}
           />
         )}

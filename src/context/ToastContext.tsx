@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface ToastItem {
   id: string;
@@ -16,6 +16,7 @@ interface ToastContextType {
     success: (title: string, message?: string) => void;
     error: (title: string, message?: string) => void;
     info: (title: string, message?: string) => void;
+    warning: (title: string, message?: string) => void;
   };
 }
 
@@ -42,6 +43,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     success: (title: string, message?: string) => addToast('success', title, message),
     error: (title: string, message?: string) => addToast('error', title, message),
     info: (title: string, message?: string) => addToast('info', title, message),
+    warning: (title: string, message?: string) => addToast('warning', title, message),
   };
 
   return (
@@ -57,12 +59,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ? 'bg-slate-900/95 border-emerald-500/40 text-white shadow-emerald-950/30'
                 : t.type === 'error'
                 ? 'bg-slate-900/95 border-rose-500/40 text-white shadow-rose-950/30'
+                : t.type === 'warning'
+                ? 'bg-slate-900/95 border-amber-500/40 text-white shadow-amber-950/30'
                 : 'bg-slate-900/95 border-blue-500/40 text-white shadow-blue-950/30'
             }`}
           >
             <div className="shrink-0 mt-0.5">
               {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
               {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400" />}
+              {t.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400" />}
               {t.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
             </div>
 
