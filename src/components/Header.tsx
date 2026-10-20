@@ -7,20 +7,24 @@ import {
   Cloud,
   RefreshCw,
   LayoutGrid,
+  Flame,
 } from 'lucide-react';
 import { YouTubeIcon } from './YouTubeIcon';
 import { Course } from '../types';
 import { User } from '@supabase/supabase-js';
+import { StudyStreakData } from '../utils/streak';
 
 interface HeaderProps {
   courses: Course[];
   currentCourse: Course | null;
   user: User | null;
   isSyncing?: boolean;
+  streak?: StudyStreakData;
   onBackToDashboard: () => void;
   onOpenAddModal: () => void;
   onOpenSettings: () => void;
   onOpenAuthModal: () => void;
+  onOpenStreakModal?: () => void;
   onManualSync?: () => void;
 }
 
@@ -29,12 +33,15 @@ export const Header: React.FC<HeaderProps> = ({
   currentCourse,
   user,
   isSyncing = false,
+  streak,
   onBackToDashboard,
   onOpenAddModal,
   onOpenSettings,
   onOpenAuthModal,
+  onOpenStreakModal,
   onManualSync,
 }) => {
+
   const totalLessons = courses.reduce((acc, c) => acc + c.lessons.length, 0);
   const totalCompleted = courses.reduce(
     (acc, c) => acc + c.lessons.filter((l) => l.completed).length,
@@ -93,6 +100,22 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Buttons (Touch friendly: min 44px on mobile) */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Study Streak Badge */}
+          {streak && onOpenStreakModal && (
+            <button
+              onClick={onOpenStreakModal}
+              title={`Sequência de estudo: ${streak.currentStreak} dias seguidos. Meta de hoje: ${streak.todayLessonsCompleted}/${streak.dailyGoal} aulas.`}
+              aria-label="Abrir meta e sequência de estudos"
+              className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[40px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10"
+            >
+              <Flame className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
+              <span>{streak.currentStreak}d</span>
+              <span className="hidden sm:inline text-[11px] text-amber-400/80">
+                ({streak.todayLessonsCompleted}/{streak.dailyGoal})
+              </span>
+            </button>
+          )}
+
           {/* Cloud Sync Button */}
           <div className="flex items-center gap-1.5">
             <button

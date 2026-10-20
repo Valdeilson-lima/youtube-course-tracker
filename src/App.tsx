@@ -21,6 +21,10 @@ import { Classroom } from './components/Classroom';
 import { AddCourseModal } from './components/AddCourseModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
+import { OfflineBanner } from './components/OfflineBanner';
+import { StreakModal } from './components/StreakModal';
+import { getStudyStreak, StudyStreakData } from './utils/streak';
+import { syncCoursePlaylist } from './services/youtube';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { Smartphone } from 'lucide-react';
 
@@ -28,11 +32,14 @@ const AppContent: React.FC = () => {
   const toast = useToast();
   const [courses, setCourses] = useState<Course[]>(() => loadCourses());
   const [settings, setSettings] = useState<UserSettings>(() => loadSettings());
+  const [streak, setStreak] = useState<StudyStreakData>(() => getStudyStreak());
   const [currentCourseId, setCurrentCourseId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
 
   // Supabase Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -228,17 +235,36 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleSyncCoursePlaylist = async (course: Course) => {
+    try {
+      toast.info('Sincronizando Playlist', `Buscando novidades para "${course.title}"...`);
+      const { updatedCourse, addedCount } = await syncCoursePlaylist(course, settings.youtubeApiKey);
+      if (addedCount > 0) {
+        handleUpdateCourse(updatedCourse);
+        toast.success('Playlist Atualizada!', `${addedCount} nova(s) aula(s) foram adicionadas ao curso.`);
+      } else {
+        toast.info('Tudo Atualizado', 'Nenhuma aula nova foi adicionada a esta playlist no YouTube.');
+      }
+    } catch (err: any) {
+      toast.error('Erro na sincronização', err?.message || 'Não foi possível consultar a playlist.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <OfflineBanner onReconnected={() => user && handleCloudSync(user.id, false)} />
+
       <Header
         courses={courses}
         currentCourse={currentCourse}
         user={user}
         isSyncing={isSyncing}
+        streak={streak}
         onBackToDashboard={handleBackToDashboard}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenStreakModal={() => setIsStreakModalOpen(true)}
         onManualSync={user ? () => handleCloudSync(user.id, true) : undefined}
       />
 
@@ -276,6 +302,7 @@ const AppContent: React.FC = () => {
             onUpdateCourseCategory={handleUpdateCourseCategory}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onLoadDemoCourses={handleLoadDemoCourses}
+            onSyncCoursePlaylist={handleSyncCoursePlaylist}
           />
         )}
       </main>
@@ -308,8 +335,16 @@ const AppContent: React.FC = () => {
           }
         }}
       />
+
+      <StreakModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        streak={streak}
+        onUpdateStreak={setStreak}
+      />
     </div>
   );
+
 };
 
 export const App: React.FC = () => {

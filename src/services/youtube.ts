@@ -237,3 +237,52 @@ export function parseManualLessonList(rawText: string): Lesson[] {
 
   return lessons;
 }
+
+/**
+ * Sincroniza incrementalmente uma playlist existente com o YouTube:
+ * - Mantém intactas todas as aulas já concluídas, anotações e progresso.
+ * - Adiciona novos vídeos lançados no final da lista.
+ */
+export async function syncCoursePlaylist(
+  course: Course,
+  apiKey?: string
+): Promise<{ updatedCourse: Course; addedCount: number }> {
+  if (!course.playlistId || course.playlistId.trim() === '') {
+    throw new Error('Este curso não possui um ID de playlist do YouTube associado.');
+  }
+
+  const freshData = await fetchPlaylistData(course.playlistId, apiKey);
+  const existingIdSet = new Set(course.lessons.map((l) => l.id));
+
+  const newLessons: Lesson[] = [];
+
+  for (const freshLesson of freshData.lessons) {
+    if (!existingIdSet.has(freshLesson.id)) {
+      newLessons.push({
+        ...freshLesson,
+        completed: false,
+        lastPositionSeconds: 0,
+      });
+      existingIdSet.add(freshLesson.id);
+    }
+  }
+
+  if (newLessons.length === 0) {
+    return {
+      updatedCourse: course,
+      addedCount: 0,
+    };
+  }
+
+  const updatedCourse: Course = {
+    ...course,
+    lessons: [...course.lessons, ...newLessons],
+    lastAccessedAt: new Date().toISOString(),
+  };
+
+  return {
+    updatedCourse,
+    addedCount: newLessons.length,
+  };
+}
+

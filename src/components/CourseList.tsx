@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Course } from '../types';
 import { useToast } from '../context/ToastContext';
+import { calculateCourseTimeStats } from '../utils/duration';
 import {
   Play,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   Tag,
   Edit2,
   Search,
+  RefreshCw,
 } from 'lucide-react';
 
 interface CourseListProps {
@@ -22,7 +24,9 @@ interface CourseListProps {
   onUpdateCourseCategory: (courseId: string, newCategory: string) => void;
   onOpenAddModal: () => void;
   onLoadDemoCourses: () => void;
+  onSyncCoursePlaylist?: (course: Course) => Promise<void> | void;
 }
+
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Inteligência Artificial': {
@@ -70,7 +74,9 @@ export const CourseList: React.FC<CourseListProps> = ({
   onUpdateCourseCategory,
   onOpenAddModal,
   onLoadDemoCourses,
+  onSyncCoursePlaylist,
 }) => {
+
   const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -217,6 +223,7 @@ export const CourseList: React.FC<CourseListProps> = ({
           const progressPercent =
             totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
           const isDone = progressPercent === 100 && totalLessons > 0;
+          const timeStats = calculateCourseTimeStats(course.lessons);
 
           // Find current lesson index
           const currentIdx = course.lessons.findIndex((l) => l.id === course.currentLessonId);
@@ -302,6 +309,16 @@ export const CourseList: React.FC<CourseListProps> = ({
                       {course.description}
                     </p>
                   )}
+
+                  {/* Estimated Time Remaining */}
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      {isDone
+                        ? `Concluído (${timeStats.totalFormatted})`
+                        : `Faltam ${timeStats.remainingFormatted} (${timeStats.totalFormatted} total)`}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Bottom Meta & Actions */}
@@ -329,6 +346,18 @@ export const CourseList: React.FC<CourseListProps> = ({
                           : `Continuar Aula ${nextLessonNum}`}
                       </span>
                     </button>
+
+                    {course.playlistId && onSyncCoursePlaylist && (
+                      <button
+                        onClick={() => onSyncCoursePlaylist(course)}
+                        title="Buscar novas aulas adicionadas no YouTube"
+                        aria-label="Buscar novas aulas no YouTube"
+                        className="p-2.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-xl transition border border-slate-800 hover:border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
+
 
                     <button
                       onClick={() => {

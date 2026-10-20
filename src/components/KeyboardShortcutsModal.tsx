@@ -64,6 +64,11 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
       icon: <Volume2 className="w-4 h-4 text-purple-400" />,
     },
     {
+      keys: ['F'],
+      description: 'Alternar Modo Teatro (Vídeo Expandido)',
+      icon: <Play className="w-4 h-4 text-red-400" />,
+    },
+    {
       keys: ['T'],
       description: 'Inserir timestamp atual nas anotações',
       icon: <Clock className="w-4 h-4 text-amber-400" />,
