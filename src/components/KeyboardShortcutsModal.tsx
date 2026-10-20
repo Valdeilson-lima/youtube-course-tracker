@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Keyboard, Play, SkipBack, SkipForward, CheckCircle2, Volume2, Clock, HelpCircle } from 'lucide-react';
+import { X, Keyboard, Play, SkipBack, SkipForward, CheckCircle2, Volume2, Clock, HelpCircle, Lightbulb, PanelRightClose } from 'lucide-react';
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -69,6 +69,16 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
       icon: <Play className="w-4 h-4 text-red-400" />,
     },
     {
+      keys: ['D'],
+      description: 'Apagar / Acender a luz (Modo Cinema / Foco)',
+      icon: <Lightbulb className="w-4 h-4 text-amber-400" />,
+    },
+    {
+      keys: ['S'],
+      description: 'Abrir / Fechar lista de aulas lateral',
+      icon: <PanelRightClose className="w-4 h-4 text-cyan-400" />,
+    },
+    {
       keys: ['T'],
       description: 'Inserir timestamp atual nas anotações',
       icon: <Clock className="w-4 h-4 text-amber-400" />,
@@ -77,6 +87,11 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
       keys: ['?'],
       description: 'Abrir este guia de atalhos rápidos',
       icon: <HelpCircle className="w-4 h-4 text-slate-400" />,
+    },
+    {
+      keys: ['Esc'],
+      description: 'Acender luz / Fechar janelas e atalhos',
+      icon: <X className="w-4 h-4 text-rose-400" />,
     },
   ];
 

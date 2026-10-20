@@ -29,6 +29,10 @@ import {
   Edit3,
   Tv,
   RefreshCw,
+  Lightbulb,
+  LightbulbOff,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 
 function formatTime(totalSeconds: number): string {
@@ -149,9 +153,50 @@ export const Classroom: React.FC<ClassroomProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(settings.playbackRate || 1);
   const [autoPlayNext, setAutoPlayNext] = useState<boolean>(settings.autoPlayNext);
 
-  // Theater Mode & Playlist Sync state
+  // Theater Mode, Lights Off, Sidebar & Playlist Sync state
   const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [isLightsOff, setIsLightsOff] = useState(false);
+  const [isLessonsSidebarOpen, setIsLessonsSidebarOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('tubecourse_sidebar_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
   const [isSyncingPlaylist, setIsSyncingPlaylist] = useState(false);
+
+  // Toggle Lights Off (Cinema / Focus Mode)
+  const toggleLights = () => {
+    setIsLightsOff((prev) => {
+      const next = !prev;
+      if (next) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.info('Luzes Apagadas', 'Modo Cinema ativado! Pressione Esc, D ou clique fora para acender.');
+      } else {
+        toast.info('Luzes Acesas', 'Modo normal restaurado.');
+      }
+      return next;
+    });
+  };
+
+  // Toggle Lessons List Sidebar
+  const toggleLessonsSidebar = () => {
+    setIsLessonsSidebarOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('tubecourse_sidebar_open', String(next));
+      } catch {}
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setMobileTab(next ? 'lessons' : 'video');
+      }
+      toast.info(
+        next ? 'Lista de Aulas Aberta' : 'Lista de Aulas Ocultada',
+        next ? 'Visualizando índice completo de aulas.' : 'Foco expandido na área de vídeo. Pressione S para reabrir.'
+      );
+      return next;
+    });
+  };
 
   // Modals state
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
@@ -422,6 +467,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
       );
       if (isInput) return;
 
+      if (e.key === 'Escape') {
+        if (isLightsOff) {
+          e.preventDefault();
+          setIsLightsOff(false);
+          toast.info('Luzes Acesas', 'Modo normal restaurado.');
+          return;
+        }
+      }
+
       if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault();
         setIsShortcutsModalOpen((prev) => !prev);
@@ -449,6 +503,12 @@ export const Classroom: React.FC<ClassroomProps> = ({
         e.preventDefault();
         setIsTheaterMode((prev) => !prev);
         toast.info('Modo Teatro', isTheaterMode ? 'Retornando ao modo normal' : 'Modo teatro expandido ativado');
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        toggleLights();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        toggleLessonsSidebar();
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         playerRef.current?.toggleMute();
@@ -460,7 +520,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeLessonId, isTheaterMode, noteText, currentTime]);
+  }, [activeLessonId, isTheaterMode, isLightsOff, isLessonsSidebarOpen, noteText, currentTime]);
 
   // Filter lessons in sidebar with both search query and completion filter
   const filteredLessons = course.lessons.filter((l) => {
@@ -507,8 +567,34 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
 
-        {/* Top Bar Right: Sync Playlist, Shortcuts, Trophy, Progress Display */}
+        {/* Top Bar Right: Toggle Sidebar, Sync Playlist, Shortcuts, Trophy, Progress Display */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Toggle Lessons List Sidebar Button */}
+          <button
+            onClick={toggleLessonsSidebar}
+            title={isLessonsSidebarOpen ? 'Fechar lista de aulas (Atalho: S)' : 'Abrir lista de aulas (Atalho: S)'}
+            aria-label={isLessonsSidebarOpen ? 'Fechar lista de aulas' : 'Abrir lista de aulas'}
+            className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-xl transition border min-h-[40px] active:scale-95 ${
+              isLessonsSidebarOpen
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
+                : 'bg-red-500/15 hover:bg-red-500/25 text-red-400 border-red-500/40 shadow-sm'
+            }`}
+          >
+            {isLessonsSidebarOpen ? (
+              <>
+                <PanelRightClose className="w-4 h-4 text-slate-400" />
+                <span className="hidden sm:inline">Fechar Aulas</span>
+                <kbd className="hidden xl:inline px-1.5 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">S</kbd>
+              </>
+            ) : (
+              <>
+                <PanelRightOpen className="w-4 h-4 text-red-400" />
+                <span className="hidden sm:inline">Abrir Aulas</span>
+                <kbd className="hidden xl:inline px-1.5 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">S</kbd>
+              </>
+            )}
+          </button>
+
           {/* Sync Playlist Button */}
           {course.playlistId && (
             <button
@@ -605,17 +691,52 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </button>
       </div>
 
-      {/* Main Content Layout (Theater Mode expands max-w) */}
+      {/* Lights Off / Cinema Overlay */}
+      {isLightsOff && (
+        <div
+          role="button"
+          tabIndex={-1}
+          aria-label="Clique para acender as luzes"
+          onClick={toggleLights}
+          className="fixed inset-0 bg-black/92 backdrop-blur-[2px] z-50 transition-opacity duration-300 cursor-pointer animate-fade-in flex flex-col items-center justify-start pt-4 sm:pt-6"
+        >
+          {/* Floating Header Banner */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-[70] flex items-center gap-2.5 sm:gap-3 px-4 py-2 rounded-full bg-slate-900/95 border border-slate-700 shadow-2xl text-xs text-slate-300 cursor-default animate-fade-in select-none"
+          >
+            <span className="flex items-center gap-1.5 font-bold text-amber-300">
+              <LightbulbOff className="w-4 h-4 text-amber-400" />
+              Luzes Apagadas
+            </span>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <span className="text-slate-400 hidden sm:inline">
+              Pressione <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono text-[10px]">Esc</kbd> ou <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono text-[10px]">D</kbd>
+            </span>
+            <button
+              onClick={toggleLights}
+              className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-full transition active:scale-95 shadow-md text-xs cursor-pointer ml-1"
+            >
+              <Lightbulb className="w-3.5 h-3.5 fill-current" />
+              Acender a Luz
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Layout (Theater Mode or Closed Sidebar expands max-w) */}
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* Left Column (Video & Player) */}
         <div
           className={`flex-1 p-2 sm:p-6 lg:p-8 flex flex-col gap-3 sm:gap-6 transition-all duration-300 ${
-            isTheaterMode ? 'w-full max-w-7xl mx-auto' : 'max-w-5xl'
-          } ${mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'}`}
+            isTheaterMode || !isLessonsSidebarOpen ? 'w-full max-w-7xl mx-auto' : 'max-w-5xl'
+          } ${mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'} ${
+            isLightsOff ? 'relative z-[60]' : ''
+          }`}
         >
           {/* YouTube Player & Resume notification */}
           {activeLesson && (
-            <div className="space-y-2">
+            <div className={`space-y-2 transition-all duration-300 ${isLightsOff ? 'rounded-2xl ring-2 ring-amber-500/30 shadow-2xl shadow-amber-500/10' : ''}`}>
               <YouTubePlayer
                 key={activeLesson.id}
                 ref={playerRef}
@@ -695,8 +816,33 @@ export const Classroom: React.FC<ClassroomProps> = ({
               </button>
             </div>
 
-            {/* Row 2: Theater Mode, Autoplay & Speed Selector */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+            {/* Row 2: Lights Off, Theater Mode, Autoplay & Speed Selector */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/80 flex-wrap">
+              {/* Lights Off Button */}
+              <button
+                onClick={toggleLights}
+                title={isLightsOff ? 'Acender a luz (Atalho: D ou Esc)' : 'Apagar a luz para focar no vídeo (Atalho: D)'}
+                aria-label={isLightsOff ? 'Acender a luz' : 'Apagar a luz'}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] active:scale-95 ${
+                  isLightsOff
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md font-bold'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
+                }`}
+              >
+                {isLightsOff ? (
+                  <>
+                    <LightbulbOff className="w-4 h-4 text-slate-950 fill-current" />
+                    <span>Acender Luz [D]</span>
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="w-4 h-4 text-amber-400" />
+                    <span>Apagar Luz</span>
+                    <kbd className="hidden md:inline px-1 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">D</kbd>
+                  </>
+                )}
+              </button>
+
               {/* Theater Mode Button */}
               <button
                 onClick={() => setIsTheaterMode(!isTheaterMode)}
@@ -953,17 +1099,33 @@ export const Classroom: React.FC<ClassroomProps> = ({
         <div
           className={`w-full ${
             isTheaterMode ? 'lg:w-80' : 'lg:w-96'
-          } bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 ${
-            mobileTab === 'lessons' ? 'flex' : isTheaterMode ? 'hidden xl:flex' : 'hidden lg:flex'
+          } bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 transition-all duration-300 ${
+            !isLessonsSidebarOpen
+              ? 'hidden'
+              : mobileTab === 'lessons'
+              ? 'flex'
+              : isTheaterMode
+              ? 'hidden xl:flex'
+              : 'hidden lg:flex'
           }`}
         >
           {/* Sidebar Header with Filter Tabs and Search */}
           <div className="p-3 sm:p-4 border-b border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-xs sm:text-sm text-white">Conteúdo das Aulas</h3>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                {completedLessons}/{totalLessons} concluídas
-              </span>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-xs sm:text-sm text-white">Conteúdo das Aulas</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  {completedLessons}/{totalLessons}
+                </span>
+              </div>
+              <button
+                onClick={toggleLessonsSidebar}
+                title="Fechar lista de aulas (Atalho: S)"
+                aria-label="Fechar lista de aulas"
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition active:scale-95 min-h-[32px] min-w-[32px] flex items-center justify-center border border-slate-800 hover:border-slate-700"
+              >
+                <PanelRightClose className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Filter Tabs: Todas, Pendentes, Concluídas */}
@@ -1107,6 +1269,24 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Floating Dock Button to Reopen Lessons List on Desktop */}
+      {!isLessonsSidebarOpen && !isLightsOff && (
+        <button
+          onClick={toggleLessonsSidebar}
+          title="Abrir lista de aulas (Atalho: S)"
+          aria-label="Abrir lista de aulas"
+          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 bg-slate-900/95 hover:bg-slate-800 text-slate-300 hover:text-white border-l border-y border-slate-700 rounded-l-2xl px-2.5 py-3 shadow-2xl transition-all duration-200 flex-col items-center gap-2 group active:scale-95 cursor-pointer hover:border-red-500/50 backdrop-blur-sm"
+        >
+          <PanelRightOpen className="w-4 h-4 text-red-400 group-hover:scale-110 transition-transform" />
+          <span className="[writing-mode:vertical-rl] text-[11px] font-bold tracking-wider uppercase text-slate-300 group-hover:text-white py-1">
+            Aulas
+          </span>
+          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+            {completedLessons}/{totalLessons}
+          </span>
+        </button>
+      )}
 
       {/* Keyboard Shortcuts Modal */}
       <KeyboardShortcutsModal
