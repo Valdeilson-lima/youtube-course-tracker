@@ -145,18 +145,18 @@ export const CourseList: React.FC<CourseListProps> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 p-6 sm:p-10 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 p-4 sm:p-10 shadow-2xl">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold mb-4">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] sm:text-xs font-semibold mb-2 sm:mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             Sua Sala de Estudos Pessoal
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+          <h1 className="text-xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug sm:leading-tight">
             Continue seus estudos com foco total
           </h1>
-          <p className="text-slate-400 text-sm sm:text-base mt-2">
+          <p className="text-slate-400 text-xs sm:text-base mt-1.5 sm:mt-2">
             Organize suas playlists por tecnologia (Inteligência Artificial, Python, JavaScript, PHP) com progresso contínuo e anotações.
           </p>
         </div>
@@ -166,9 +166,9 @@ export const CourseList: React.FC<CourseListProps> = ({
       </div>
 
       {/* Categories & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Category Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
           {categories.map((cat) => {
             const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
             const isSelected = selectedCategory === cat;
@@ -177,7 +177,7 @@ export const CourseList: React.FC<CourseListProps> = ({
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[36px] ${
                   isSelected
                     ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
                     : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700'
@@ -204,13 +204,13 @@ export const CourseList: React.FC<CourseListProps> = ({
             placeholder="Buscar por curso ou canal..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[40px]"
           />
         </div>
       </div>
 
       {/* Course Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredCourses.map((course) => {
           const totalLessons = course.lessons.length;
           const completedCount = course.lessons.filter((l) => l.completed).length;
