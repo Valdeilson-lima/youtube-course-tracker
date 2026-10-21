@@ -141,7 +141,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({
               <button
                 key={g}
                 onClick={() => handleSetGoal(g)}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition border min-h-[40px] active:scale-95 ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition border min-h-[44px] active:scale-95 cursor-pointer ${
                   streak.dailyGoal === g
                     ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
                     : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600'
@@ -154,14 +154,14 @@ export const StreakModal: React.FC<StreakModalProps> = ({
         </div>
 
         {/* Stats footer */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs text-slate-400 pt-3 border-t border-slate-800">
+          <div className="flex items-center gap-1.5 justify-center sm:justify-start">
             <Trophy className="w-4 h-4 text-amber-400" />
             <span>Seu melhor recorde: <strong className="text-white">{streak.bestStreak} dias</strong></span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition active:scale-95"
+            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition active:scale-95 min-h-[44px] flex items-center justify-center cursor-pointer"
           >
             Fechar
           </button>

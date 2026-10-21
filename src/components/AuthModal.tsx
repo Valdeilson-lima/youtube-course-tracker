@@ -243,7 +243,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="https://xyzcompany.supabase.co"
                 value={config.url}
                 onChange={(e) => setConfig({ ...config, url: e.target.value.trim() })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base sm:text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 min-h-[44px] sm:min-h-[38px]"
               />
             </div>
 
@@ -256,7 +256,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 value={config.anonKey}
                 onChange={(e) => setConfig({ ...config, anonKey: e.target.value.trim() })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-base sm:text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 min-h-[44px] sm:min-h-[38px]"
               />
             </div>
 
@@ -269,7 +269,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopySchema}
-                  className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 font-medium"
+                  className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 font-medium py-1 px-2 rounded-lg hover:bg-slate-800 transition cursor-pointer"
                 >
                   {copiedSchema ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedSchema ? 'Copiado!' : 'Copiar SQL'}</span>
@@ -283,7 +283,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
               <button
                 type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 transition"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 transition min-h-[44px] flex items-center justify-center cursor-pointer"
               >
                 Salvar Credenciais
               </button>
@@ -291,13 +291,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </form>
         ) : (
           /* Sign In / Sign Up Form */
-          <form onSubmit={handleAuth} className="p-6 space-y-4">
+          <form onSubmit={handleAuth} className="p-5 sm:p-6 space-y-4">
             {/* Mode Switcher */}
             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className={`flex-1 py-1.5 rounded-lg transition ${
+                className={`flex-1 py-2 sm:py-1.5 rounded-lg transition min-h-[40px] sm:min-h-[34px] cursor-pointer ${
                   mode === 'signin' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'
                 }`}
               >
@@ -306,7 +306,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => setMode('signup')}
-                className={`flex-1 py-1.5 rounded-lg transition ${
+                className={`flex-1 py-2 sm:py-1.5 rounded-lg transition min-h-[40px] sm:min-h-[34px] cursor-pointer ${
                   mode === 'signup' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'
                 }`}
               >
@@ -354,7 +354,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-base sm:text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition min-h-[44px] sm:min-h-[38px]"
                 />
               </div>
             </div>
@@ -369,7 +369,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-base sm:text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition min-h-[44px] sm:min-h-[38px]"
                 />
               </div>
             </div>
@@ -377,7 +377,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2"
+              className="w-full py-3 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
             >
               {isLoading ? (
                 <>

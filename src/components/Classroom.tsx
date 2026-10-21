@@ -897,7 +897,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
             <div
               className={
                 isMiniplayer
-                  ? 'fixed bottom-5 right-5 z-50 w-80 sm:w-96 rounded-2xl shadow-2xl border-2 border-slate-700 bg-slate-950 overflow-hidden ring-4 ring-black/60 transition-all duration-300'
+                  ? 'fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 rounded-2xl shadow-2xl border-2 border-slate-700 bg-slate-950 overflow-hidden ring-4 ring-black/60 transition-all duration-300 pb-safe'
                   : `space-y-2 transition-all duration-300 ${isLightsOff ? 'rounded-2xl ring-2 ring-amber-500/30 shadow-2xl shadow-amber-500/10' : ''}`
               }
             >
@@ -1254,7 +1254,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                     onChange={(e) => handleSaveNotes(e.target.value)}
                     placeholder="Escreva suas anotações, resumo e insights desta aula aqui... Marcadores de tempo como [02:30] ficam clicáveis para pular no vídeo!"
                     rows={6}
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition"
                   />
                 ) : (
                   <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-200 font-mono min-h-[140px] whitespace-pre-wrap leading-relaxed">
@@ -1290,21 +1290,21 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 <button
                   onClick={handleGenerateSummary}
                   title="Resumo com IA"
-                  className="flex items-center gap-1 px-2.5 py-2 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-sm min-h-[40px] active:scale-95"
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-sm min-h-[44px] active:scale-95 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>IA</span>
                 </button>
                 <button
                   onClick={insertTimestamp}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[40px] active:scale-95"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[44px] active:scale-95 cursor-pointer"
                 >
                   <Clock className="w-4 h-4" />
                   <span>Timestamp</span>
                 </button>
                 <button
                   onClick={downloadCourseNotes}
-                  className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
+                  className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                 </button>
@@ -1322,7 +1322,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                     key={idx}
                     type="button"
                     onClick={() => handleSeekToTimestamp(ts.seconds)}
-                    className="px-2 py-1 text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg active:scale-95"
+                    className="px-2.5 py-1.5 text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg active:scale-95 min-h-[36px] flex items-center"
                   >
                     ⏱️ {ts.label}
                   </button>
@@ -1335,7 +1335,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
               onChange={(e) => handleSaveNotes(e.target.value)}
               placeholder="Escreva suas anotações desta aula aqui... (Salvamento automático)"
               rows={12}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-red-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-base sm:text-sm font-mono text-slate-200 focus:outline-none focus:border-red-500 leading-relaxed"
             />
           </div>
         </div>
@@ -1415,7 +1415,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 placeholder="Filtrar por nome da aula..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[42px]"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-base sm:text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[44px]"
               />
             </div>
           </div>

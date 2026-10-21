@@ -252,7 +252,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 placeholder="https://www.youtube.com/playlist?list=PL..."
                 value={playlistUrl}
                 onChange={(e) => setPlaylistUrl(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 sm:py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition min-h-[44px] sm:min-h-[40px]"
               />
               <p className="text-[11px] text-slate-500 mt-1">
                 Cole a URL completa de qualquer playlist pública do YouTube.
@@ -269,7 +269,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1 | Aula 01&#10;https://www.youtube.com/watch?v=VIDEO_ID_2 | Aula 02"
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-base sm:text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition"
               />
               <p className="text-[11px] text-slate-500 mt-1">
                 Formato opcional: <code className="text-red-400">URL | Nome da Aula</code>
@@ -287,7 +287,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
               placeholder="Ex: Inteligência Artificial do Zero"
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 sm:py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition min-h-[44px] sm:min-h-[40px]"
             />
           </div>
 
@@ -301,7 +301,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddingCustomCategory(!isAddingCustomCategory)}
-                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-medium transition"
+                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-medium transition cursor-pointer"
               >
                 {isAddingCustomCategory ? 'Escolher das sugestões' : '+ Digitar outra categoria'}
               </button>
@@ -314,18 +314,18 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 value={customCategoryInput}
                 onChange={(e) => setCustomCategoryInput(e.target.value)}
                 autoFocus
-                className="w-full bg-slate-950 border border-red-500/50 rounded-xl px-4 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition"
+                className="w-full bg-slate-950 border border-red-500/50 rounded-xl px-4 py-3 sm:py-2 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 transition min-h-[44px]"
               />
             ) : (
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 bg-slate-950/40 rounded-xl border border-slate-800/80">
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-950/40 rounded-xl border border-slate-800/80">
                 {POPULAR_CATEGORIES.map((cat) => (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setCategory(cat)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    className={`px-3 py-2 sm:py-1 rounded-lg text-xs font-medium transition min-h-[38px] sm:min-h-[30px] flex items-center cursor-pointer ${
                       category === cat
-                        ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                        ? 'bg-red-600 text-white shadow-md shadow-red-600/30 font-semibold'
                         : 'bg-slate-800/70 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/60'
                     }`}
                   >
@@ -337,19 +337,19 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-slate-800">
+          <div className="pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white rounded-xl transition"
+              className="px-4 py-3 sm:py-2.5 text-sm font-medium text-slate-400 hover:text-white rounded-xl transition min-h-[44px] flex items-center justify-center cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95"
+              className="flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95 min-h-[44px] cursor-pointer"
             >
               {isLoading ? (
                 <>

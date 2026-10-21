@@ -152,10 +152,10 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
 
         {/* Footer */}
         {summary && !isLoading && (
-          <div className="p-4 bg-slate-950/90 border-t border-slate-800 flex items-center justify-between gap-3 relative z-10">
+          <div className="p-4 bg-slate-950/90 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 relative z-10 pb-safe">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition border border-slate-700 active:scale-95"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition border border-slate-700 active:scale-95 min-h-[44px] cursor-pointer"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
@@ -163,7 +163,7 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
 
             <button
               onClick={handleInsert}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-purple-600/20 transition active:scale-95 cursor-pointer"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-purple-600/20 transition active:scale-95 cursor-pointer min-h-[44px]"
             >
               <FilePlus className="w-4 h-4" />
               <span>Inserir nas minhas Anotações</span>

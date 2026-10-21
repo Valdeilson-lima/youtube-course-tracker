@@ -218,9 +218,9 @@ export const CourseList: React.FC<CourseListProps> = ({
       </div>
 
       {/* Categories & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory">
           {categories.map((cat) => {
             const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
             const isSelected = selectedCategory === cat;
@@ -229,7 +229,7 @@ export const CourseList: React.FC<CourseListProps> = ({
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[36px] ${
+                className={`snap-start flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[44px] sm:min-h-[36px] active:scale-95 cursor-pointer ${
                   isSelected
                     ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
                     : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700'
@@ -237,7 +237,7 @@ export const CourseList: React.FC<CourseListProps> = ({
               >
                 <span>{cat}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                     isSelected ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-400'
                   }`}
                 >
@@ -248,21 +248,21 @@ export const CourseList: React.FC<CourseListProps> = ({
           })}
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full md:w-64 shrink-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Search Input (text-base sm:text-xs prevents iOS Safari auto-zoom) */}
+        <div className="relative w-full md:w-72 lg:w-80 shrink-0">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Buscar por curso ou canal..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[40px]"
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-base sm:text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[44px] sm:min-h-[40px]"
           />
         </div>
       </div>
 
       {/* Course Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
         {filteredCourses.map((course) => {
           const totalLessons = course.lessons.length;
           const completedCount = course.lessons.filter((l) => l.completed).length;
@@ -483,7 +483,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                 placeholder="Ex: Inteligência Artificial, Python, PHP..."
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-200 focus:outline-none focus:border-red-500"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-slate-200 focus:outline-none focus:border-red-500"
               />
               <div className="flex flex-wrap gap-1.5">
                 {['Inteligência Artificial', 'Python', 'JavaScript', 'PHP', 'React', 'HTML & CSS'].map(
@@ -492,7 +492,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                       key={cat}
                       type="button"
                       onClick={() => setNewCategoryName(cat)}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white"
+                      className="px-2.5 py-1.5 sm:py-0.5 rounded-lg bg-slate-800 text-xs sm:text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white transition active:scale-95"
                     >
                       {cat}
                     </button>
@@ -503,13 +503,13 @@ export const CourseList: React.FC<CourseListProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingCourseId(null)}
-                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white min-h-[44px] sm:min-h-[36px] flex items-center justify-center rounded-lg transition"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex items-center justify-center transition active:scale-95"
                 >
                   Salvar
                 </button>

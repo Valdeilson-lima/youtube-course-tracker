@@ -172,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onChange={(e) =>
                 setCurrentSettings({ ...currentSettings, youtubeApiKey: e.target.value.trim() })
               }
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500 font-mono transition min-h-[44px] sm:min-h-[40px]"
             />
             <p className="text-[11px] text-slate-500">
               Não é obrigatória! Usamos importação pública sem chave por padrão. Se possuir uma chave do Google Cloud Console, insira-a para carregar playlists gigantes sem limite.
@@ -203,7 +203,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onChange={(e) =>
                 setCurrentSettings({ ...currentSettings, geminiApiKey: e.target.value.trim() })
               }
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono transition"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono transition min-h-[44px] sm:min-h-[40px]"
             />
             <p className="text-[11px] text-slate-500">
               Opcional. Se não preencher, o sistema gera resumos inteligentes estruturados em modo offline. Ao adicionar sua chave gratuita do Google AI Studio, o modelo Gemini 1.5 Flash sintetiza os pontos-chave de cada aula em tempo real.
@@ -216,17 +216,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Backup e Armazenamento Local
             </h4>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={handleExportBackup}
-                className="flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-xl border border-slate-700 transition"
+                className="flex items-center justify-center gap-2 px-3.5 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-xl border border-slate-700 transition min-h-[44px] sm:min-h-[38px] cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Exportar Dados (JSON)</span>
               </button>
 
-              <label className="flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-xl border border-slate-700 transition cursor-pointer">
+              <label className="flex items-center justify-center gap-2 px-3.5 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-xl border border-slate-700 transition min-h-[44px] sm:min-h-[38px] cursor-pointer">
                 <Upload className="w-3.5 h-3.5 text-blue-400" />
                 <span>Importar Dados</span>
                 <input
@@ -245,7 +245,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClose();
                   }
                 }}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl border border-rose-500/20 transition ml-auto"
+                className="flex items-center justify-center gap-2 px-3.5 py-2.5 sm:py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl border border-rose-500/20 transition sm:ml-auto min-h-[44px] sm:min-h-[38px] cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Restaurar Padrões</span>
@@ -254,17 +254,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white rounded-xl transition"
+              className="px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white rounded-xl transition min-h-[44px] sm:min-h-[40px] flex items-center justify-center cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95 min-h-[44px] sm:min-h-[40px] cursor-pointer"
             >
               {savedSuccess ? (
                 <>

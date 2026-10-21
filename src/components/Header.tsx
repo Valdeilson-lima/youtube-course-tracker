@@ -101,14 +101,14 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Action Buttons (Touch friendly: min 44px on mobile) */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Study Streak Badge & Horímetro */}
           {streak && onOpenStreakModal && (
             <button
               onClick={onOpenStreakModal}
               title={`Sequência de estudo: ${streak.currentStreak} dias seguidos. Tempo total: ${formatHoursAndMinutes(streak.totalSecondsStudied || 0)}. Meta de hoje: ${streak.todayLessonsCompleted}/${streak.dailyGoal} aulas.`}
               aria-label="Abrir meta e sequência de estudos"
-              className="max-[380px]:hidden flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[40px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10"
+              className="max-[380px]:hidden flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[44px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10 cursor-pointer"
             >
               <Flame className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
               <span>{streak.currentStreak}d</span>
@@ -125,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Cloud Sync / Auth Button */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <button
               onClick={onOpenAuthModal}
               title={
@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'Fazer Login ou Criar Conta'
               }
               aria-label="Autenticação e sincronização na nuvem"
-              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-xl border transition min-h-[40px] sm:min-h-[38px] active:scale-95 ${
+              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-xl border transition min-h-[44px] sm:min-h-[38px] active:scale-95 cursor-pointer ${
                 user
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
                   : 'bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-slate-950 border-cyan-300 font-bold shadow-md shadow-sky-500/20'
@@ -146,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <Cloud className="w-4 h-4 text-emerald-400 fill-emerald-400/20" />
                     <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   </div>
-                  <span className="hidden md:inline">
+                  <span className="hidden md:inline max-w-[120px] truncate">
                     {user.email?.split('@')[0]}
                   </span>
                 </>
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
                 disabled={isSyncing}
                 title="Forçar Sincronização Agora"
                 aria-label="Sincronizar agora"
-                className="p-2 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800 border border-slate-800 transition min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
+                className="p-2 sm:p-2 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800 border border-slate-800 transition min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center active:scale-95 cursor-pointer"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${
@@ -179,7 +179,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onBackToDashboard}
               aria-label="Voltar para Meus Cursos"
-              className="flex items-center justify-center gap-1 px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 min-h-[40px] min-w-[40px] active:scale-95"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 min-h-[44px] min-w-[44px] sm:min-h-[38px] active:scale-95 cursor-pointer"
             >
               <LayoutGrid className="w-4 h-4 sm:hidden" />
               <span className="hidden sm:inline">Meus Cursos</span>
@@ -189,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenAddModal}
             aria-label="Adicionar nova playlist"
-            className="flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-300 to-sky-400 hover:from-cyan-200 hover:to-sky-300 rounded-xl transition shadow-md shadow-sky-500/20 active:scale-95 min-h-[40px]"
+            className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-300 to-sky-400 hover:from-cyan-200 hover:to-sky-300 rounded-xl transition shadow-md shadow-sky-500/20 active:scale-95 min-h-[44px] sm:min-h-[38px] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Adicionar Playlist</span>
@@ -200,7 +200,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenSettings}
             title="Configurações"
             aria-label="Abrir configurações"
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition border border-transparent hover:border-slate-700 min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition border border-transparent hover:border-slate-700 min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center active:scale-95 cursor-pointer"
           >
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
