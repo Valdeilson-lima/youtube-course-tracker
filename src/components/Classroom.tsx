@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext';
 import { calculateCourseTimeStats } from '../utils/duration';
 import { recordLessonCompleted } from '../utils/streak';
 import { syncCoursePlaylist } from '../services/youtube';
+import { getCategoryTheme } from './CourseList';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -685,11 +686,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[160px] sm:max-w-md">
                 {course.title}
               </h2>
-              {course.category && (
-                <span className="hidden md:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
-                  {course.category}
-                </span>
-              )}
+              {course.category && (() => {
+                const theme = getCategoryTheme(course.category);
+                return (
+                  <span className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${theme.bg} ${theme.text} ${theme.border}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
+                    <span>{course.category}</span>
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2 text-[11px] text-slate-400">
               <span>Aula {activeLessonIndex + 1} de {totalLessons}</span>

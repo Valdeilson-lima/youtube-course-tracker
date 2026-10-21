@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Course } from '../types';
 import { useToast } from '../context/ToastContext';
 import { calculateCourseTimeStats } from '../utils/duration';
@@ -21,6 +21,8 @@ import {
   ChevronRight,
   ChevronUp,
   LayoutGrid,
+  X,
+  Filter,
 } from 'lucide-react';
 
 interface CourseListProps {
@@ -35,43 +37,134 @@ interface CourseListProps {
   onSyncCoursePlaylist?: (course: Course) => Promise<void> | void;
 }
 
+export interface CategoryTheme {
+  bg: string;
+  text: string;
+  border: string;
+  dot: string;
+  badge: string;
+}
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+const KNOWN_CATEGORY_COLORS: Record<string, CategoryTheme> = {
   'Inteligência Artificial': {
-    bg: 'bg-purple-950/80',
+    bg: 'bg-purple-950/70',
     text: 'text-purple-300',
     border: 'border-purple-500/40',
+    dot: 'bg-purple-400',
+    badge: 'bg-purple-500/20 text-purple-300',
   },
   Python: {
-    bg: 'bg-blue-950/80',
+    bg: 'bg-blue-950/70',
     text: 'text-blue-300',
     border: 'border-blue-500/40',
+    dot: 'bg-blue-400',
+    badge: 'bg-blue-500/20 text-blue-300',
   },
   JavaScript: {
-    bg: 'bg-amber-950/80',
+    bg: 'bg-amber-950/70',
     text: 'text-amber-300',
     border: 'border-amber-500/40',
+    dot: 'bg-amber-400',
+    badge: 'bg-amber-500/20 text-amber-300',
   },
   PHP: {
-    bg: 'bg-indigo-950/80',
+    bg: 'bg-indigo-950/70',
     text: 'text-indigo-300',
     border: 'border-indigo-500/40',
+    dot: 'bg-indigo-400',
+    badge: 'bg-indigo-500/20 text-indigo-300',
   },
   React: {
-    bg: 'bg-cyan-950/80',
+    bg: 'bg-cyan-950/70',
     text: 'text-cyan-300',
     border: 'border-cyan-500/40',
+    dot: 'bg-cyan-400',
+    badge: 'bg-cyan-500/20 text-cyan-300',
   },
   'HTML & CSS': {
-    bg: 'bg-orange-950/80',
+    bg: 'bg-orange-950/70',
     text: 'text-orange-300',
     border: 'border-orange-500/40',
+    dot: 'bg-orange-400',
+    badge: 'bg-orange-500/20 text-orange-300',
   },
   Idiomas: {
-    bg: 'bg-emerald-950/80',
+    bg: 'bg-emerald-950/70',
     text: 'text-emerald-300',
     border: 'border-emerald-500/40',
+    dot: 'bg-emerald-400',
+    badge: 'bg-emerald-500/20 text-emerald-300',
   },
+  'Node.js': {
+    bg: 'bg-lime-950/70',
+    text: 'text-lime-300',
+    border: 'border-lime-500/40',
+    dot: 'bg-lime-400',
+    badge: 'bg-lime-500/20 text-lime-300',
+  },
+  'Banco de Dados': {
+    bg: 'bg-sky-950/70',
+    text: 'text-sky-300',
+    border: 'border-sky-500/40',
+    dot: 'bg-sky-400',
+    badge: 'bg-sky-500/20 text-sky-300',
+  },
+  'Git & DevOps': {
+    bg: 'bg-rose-950/70',
+    text: 'text-rose-300',
+    border: 'border-rose-500/40',
+    dot: 'bg-rose-400',
+    badge: 'bg-rose-500/20 text-rose-300',
+  },
+  'Design & UX': {
+    bg: 'bg-pink-950/70',
+    text: 'text-pink-300',
+    border: 'border-pink-500/40',
+    dot: 'bg-pink-400',
+    badge: 'bg-pink-500/20 text-pink-300',
+  },
+  'Finanças & Negócios': {
+    bg: 'bg-teal-950/70',
+    text: 'text-teal-300',
+    border: 'border-teal-500/40',
+    dot: 'bg-teal-400',
+    badge: 'bg-teal-500/20 text-teal-300',
+  },
+};
+
+const DYNAMIC_PALETTES: CategoryTheme[] = [
+  { bg: 'bg-cyan-950/70', text: 'text-cyan-300', border: 'border-cyan-500/40', dot: 'bg-cyan-400', badge: 'bg-cyan-500/20 text-cyan-300' },
+  { bg: 'bg-purple-950/70', text: 'text-purple-300', border: 'border-purple-500/40', dot: 'bg-purple-400', badge: 'bg-purple-500/20 text-purple-300' },
+  { bg: 'bg-emerald-950/70', text: 'text-emerald-300', border: 'border-emerald-500/40', dot: 'bg-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300' },
+  { bg: 'bg-amber-950/70', text: 'text-amber-300', border: 'border-amber-500/40', dot: 'bg-amber-400', badge: 'bg-amber-500/20 text-amber-300' },
+  { bg: 'bg-rose-950/70', text: 'text-rose-300', border: 'border-rose-500/40', dot: 'bg-rose-400', badge: 'bg-rose-500/20 text-rose-300' },
+  { bg: 'bg-blue-950/70', text: 'text-blue-300', border: 'border-blue-500/40', dot: 'bg-blue-400', badge: 'bg-blue-500/20 text-blue-300' },
+  { bg: 'bg-indigo-950/70', text: 'text-indigo-300', border: 'border-indigo-500/40', dot: 'bg-indigo-400', badge: 'bg-indigo-500/20 text-indigo-300' },
+  { bg: 'bg-fuchsia-950/70', text: 'text-fuchsia-300', border: 'border-fuchsia-500/40', dot: 'bg-fuchsia-400', badge: 'bg-fuchsia-500/20 text-fuchsia-300' },
+  { bg: 'bg-teal-950/70', text: 'text-teal-300', border: 'border-teal-500/40', dot: 'bg-teal-400', badge: 'bg-teal-500/20 text-teal-300' },
+  { bg: 'bg-orange-950/70', text: 'text-orange-300', border: 'border-orange-500/40', dot: 'bg-orange-400', badge: 'bg-orange-500/20 text-orange-300' },
+];
+
+export const getCategoryTheme = (category: string): CategoryTheme => {
+  if (!category || category === 'Geral') {
+    return {
+      bg: 'bg-slate-800/80',
+      text: 'text-slate-200',
+      border: 'border-slate-700/60',
+      dot: 'bg-slate-400',
+      badge: 'bg-slate-700/50 text-slate-300',
+    };
+  }
+  if (KNOWN_CATEGORY_COLORS[category]) {
+    return KNOWN_CATEGORY_COLORS[category];
+  }
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = (hash << 5) - hash + category.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % DYNAMIC_PALETTES.length;
+  return DYNAMIC_PALETTES[index];
 };
 
 export const CourseList: React.FC<CourseListProps> = ({
@@ -85,7 +178,6 @@ export const CourseList: React.FC<CourseListProps> = ({
   onOpenAuthModal,
   onSyncCoursePlaylist,
 }) => {
-
   const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -95,6 +187,19 @@ export const CourseList: React.FC<CourseListProps> = ({
   const categoriesContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
   const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
+
+  // Extract unique categories and calculate counts
+  const categoryMap = useMemo(() => {
+    return courses.reduce<Record<string, number>>((acc, course) => {
+      const cat = course.category || 'Geral';
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {});
+  }, [courses]);
+
+  const categories = useMemo(() => {
+    return ['Todas', ...Object.keys(categoryMap).sort((a, b) => a.localeCompare(b, 'pt-BR'))];
+  }, [categoryMap]);
 
   const checkScrollBounds = () => {
     const el = categoriesContainerRef.current;
@@ -106,19 +211,32 @@ export const CourseList: React.FC<CourseListProps> = ({
 
   useEffect(() => {
     checkScrollBounds();
+    const el = categoriesContainerRef.current;
+    if (!el) return;
+
+    // Use ResizeObserver for instant responsive recalculation whenever content or window size changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollBounds();
+    });
+    resizeObserver.observe(el);
+
     const handleResize = () => checkScrollBounds();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isCategoriesExpanded]);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [categories, isCategoriesExpanded, courses.length]);
 
   const scrollCategories = (direction: 'left' | 'right') => {
     if (!categoriesContainerRef.current) return;
-    const scrollAmount = 280;
+    const scrollAmount = Math.max(categoriesContainerRef.current.clientWidth * 0.75, 240);
     categoriesContainerRef.current.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth',
     });
-    setTimeout(checkScrollBounds, 300);
+    setTimeout(checkScrollBounds, 320);
   };
 
   const handleCategoriesWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -127,15 +245,6 @@ export const CourseList: React.FC<CourseListProps> = ({
       checkScrollBounds();
     }
   };
-
-  // Extract unique categories and calculate counts
-  const categoryMap = courses.reduce<Record<string, number>>((acc, course) => {
-    const cat = course.category || 'Geral';
-    acc[cat] = (acc[cat] || 0) + 1;
-    return acc;
-  }, {});
-
-  const categories = ['Todas', ...Object.keys(categoryMap).sort()];
 
   // Filter courses by category and search
   const filteredCourses = courses.filter((course) => {
@@ -152,7 +261,7 @@ export const CourseList: React.FC<CourseListProps> = ({
   const handleStartEditCategory = (course: Course, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingCourseId(course.id);
-    setNewCategoryName(course.category || 'Programação');
+    setNewCategoryName(course.category || 'Geral');
   };
 
   const handleSaveCategory = (courseId: string, e: React.FormEvent) => {
@@ -257,123 +366,187 @@ export const CourseList: React.FC<CourseListProps> = ({
         </div>
       </div>
 
-      {/* Categories & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Category Tabs Container */}
-        <div className="flex-1 min-w-0 relative flex items-center gap-1.5">
-          {/* Scroll Left Button */}
-          {!isCategoriesExpanded && canScrollLeft && (
-            <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center pr-2 bg-gradient-to-r from-slate-950 via-slate-950/95 to-transparent">
-              <button
-                type="button"
-                onClick={() => scrollCategories('left')}
-                title="Rolar categorias para a esquerda"
-                aria-label="Rolar categorias para a esquerda"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Categories List (Scrollable strip or Expanded wrap) */}
-          <div
-            ref={categoriesContainerRef}
-            onScroll={checkScrollBounds}
-            onWheel={handleCategoriesWheel}
-            className={`w-full transition-all duration-200 ${
-              isCategoriesExpanded
-                ? 'flex flex-wrap gap-1.5 sm:gap-2 py-1'
-                : 'flex items-center gap-1.5 sm:gap-2 overflow-x-auto scroll-smooth py-1.5 px-0.5'
-            }`}
-            style={
-              !isCategoriesExpanded
-                ? {
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(51, 65, 85, 0.7) transparent',
-                  }
-                : undefined
-            }
-          >
-            {categories.map((cat) => {
-              const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
-              const isSelected = selectedCategory === cat;
-
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[42px] sm:min-h-[36px] active:scale-95 cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/25 ring-2 ring-red-500/40'
-                      : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <span>{cat}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      isSelected ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Scroll Right Button */}
-          {!isCategoriesExpanded && canScrollRight && (
-            <div
-              className={`absolute top-0 bottom-0 z-20 flex items-center pl-2 bg-gradient-to-l from-slate-950 via-slate-950/95 to-transparent ${
-                categories.length > 3 ? 'right-11' : 'right-0'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => scrollCategories('right')}
-                title="Rolar categorias para a direita"
-                aria-label="Rolar categorias para a direita"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Toggle Expand/Collapse Button (when more than 3 categories) */}
-          {categories.length > 3 && (
+      {/* Search Bar & Filter Controls Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800/80 backdrop-blur-sm">
+        {/* Course Count / Active Filter Label */}
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-300">
+          <Filter className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span>
+            {filteredCourses.length === courses.length ? (
+              <>
+                <strong className="text-white font-semibold">{courses.length}</strong>{' '}
+                {courses.length === 1 ? 'curso cadastrado' : 'cursos cadastrados'}
+              </>
+            ) : (
+              <>
+                Exibindo <strong className="text-white font-semibold">{filteredCourses.length}</strong> de{' '}
+                <strong className="text-slate-400 font-semibold">{courses.length}</strong> cursos
+              </>
+            )}
+          </span>
+          {(selectedCategory !== 'Todas' || searchQuery.trim() !== '') && (
             <button
-              type="button"
-              onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-              title={isCategoriesExpanded ? 'Recolher categorias em linha' : 'Ver todas as categorias expandidas'}
-              aria-label={isCategoriesExpanded ? 'Recolher categorias' : 'Expandir categorias'}
-              className={`shrink-0 p-2 rounded-xl border transition min-h-[42px] min-w-[42px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center active:scale-95 cursor-pointer ${
-                isCategoriesExpanded
-                  ? 'bg-red-500/15 text-red-400 border-red-500/40 font-bold'
-                  : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border-slate-800'
-              }`}
+              onClick={() => {
+                setSelectedCategory('Todas');
+                setSearchQuery('');
+              }}
+              className="text-[11px] text-cyan-400 hover:text-cyan-300 underline underline-offset-2 ml-1 cursor-pointer font-medium"
             >
-              {isCategoriesExpanded ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <LayoutGrid className="w-4 h-4" />
-              )}
+              Limpar filtros
             </button>
           )}
         </div>
 
-        {/* Search Input (text-base sm:text-xs prevents iOS Safari auto-zoom) */}
-        <div className="relative w-full md:w-72 lg:w-80 shrink-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar por curso ou canal..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-base sm:text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-500 transition min-h-[44px] sm:min-h-[40px]"
-          />
+        {/* Search Input & Expand/Collapse Toggle */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72 md:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por curso, categoria ou canal..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none transition min-h-[40px]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 rounded-md cursor-pointer"
+                aria-label="Limpar texto da busca"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Toggle Expand View Button */}
+          {categories.length > 2 && (
+            <button
+              type="button"
+              onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+              title={
+                isCategoriesExpanded
+                  ? 'Recolher para fita horizontal'
+                  : 'Ver todas as categorias em grade'
+              }
+              aria-label={
+                isCategoriesExpanded
+                  ? 'Recolher categorias'
+                  : 'Expandir todas as categorias'
+              }
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition active:scale-95 cursor-pointer min-h-[40px] ${
+                isCategoriesExpanded
+                  ? 'bg-cyan-500/15 text-cyan-300 border-cyan-400/40 shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border-slate-800'
+              }`}
+            >
+              {isCategoriesExpanded ? (
+                <>
+                  <ChevronUp className="w-4 h-4 text-cyan-400" />
+                  <span className="hidden sm:inline">Recolher</span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid className="w-4 h-4 text-slate-400" />
+                  <span className="hidden sm:inline">Ver todas</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Full-Width Categories Track */}
+      <div className="relative w-full">
+        {/* Scroll Left Button */}
+        {!isCategoriesExpanded && canScrollLeft && (
+          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center pr-4 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent pointer-events-none">
+            <button
+              type="button"
+              onClick={() => scrollCategories('left')}
+              title="Rolar categorias para a esquerda"
+              aria-label="Rolar categorias para a esquerda"
+              className="pointer-events-auto w-8 h-8 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer backdrop-blur-sm"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Categories List (Scrollable strip or Expanded wrap) */}
+        <div
+          ref={categoriesContainerRef}
+          onScroll={checkScrollBounds}
+          onWheel={handleCategoriesWheel}
+          className={`w-full transition-all duration-200 ${
+            isCategoriesExpanded
+              ? 'flex flex-wrap gap-2 p-1.5 bg-slate-900/40 rounded-2xl border border-slate-800/60'
+              : 'flex items-center gap-2 overflow-x-auto scroll-smooth py-1 px-1 overscroll-x-contain touch-pan-x'
+          }`}
+          style={
+            !isCategoriesExpanded
+              ? {
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: 'rgba(51, 65, 85, 0.6) transparent',
+                }
+              : undefined
+          }
+        >
+          {categories.map((cat) => {
+            const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
+            const isSelected = selectedCategory === cat;
+            const theme = getCategoryTheme(cat);
+
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap min-h-[38px] active:scale-95 cursor-pointer shrink-0 border ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-bold border-cyan-300 shadow-md shadow-cyan-500/20 ring-2 ring-cyan-400/40'
+                    : 'bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800/90 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {cat === 'Todas' ? (
+                  <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-slate-950' : 'text-cyan-400'}`} />
+                ) : (
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      isSelected ? 'bg-slate-950' : theme.dot
+                    }`}
+                  />
+                )}
+                <span>{cat}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition ${
+                    isSelected
+                      ? 'bg-slate-950/20 text-slate-950 font-extrabold'
+                      : 'bg-slate-800 text-slate-400 group-hover:text-slate-300'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Scroll Right Button */}
+        {!isCategoriesExpanded && canScrollRight && (
+          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center pl-4 bg-gradient-to-l from-slate-950 via-slate-950/80 to-transparent pointer-events-none">
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              title="Rolar categorias para a direita"
+              aria-label="Rolar categorias para a direita"
+              className="pointer-events-auto w-8 h-8 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer backdrop-blur-sm"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Course Grid */}
@@ -390,12 +563,8 @@ export const CourseList: React.FC<CourseListProps> = ({
           const currentIdx = course.lessons.findIndex((l) => l.id === course.currentLessonId);
           const nextLessonNum = currentIdx >= 0 ? currentIdx + 1 : 1;
 
-          // Custom colors for known categories
-          const catColor = CATEGORY_COLORS[course.category || ''] || {
-            bg: 'bg-slate-900/90',
-            text: 'text-slate-200',
-            border: 'border-slate-700/60',
-          };
+          // Custom dynamic theme for course category
+          const catTheme = getCategoryTheme(course.category || 'Geral');
 
           return (
             <div
@@ -418,15 +587,16 @@ export const CourseList: React.FC<CourseListProps> = ({
 
                 {/* Category Badge with quick edit */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                  <span
+                  <button
+                    type="button"
                     onClick={(e) => handleStartEditCategory(course, e)}
-                    title="Clique para alterar a categoria"
-                    className={`cursor-pointer group/cat flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold backdrop-blur-md border shadow-sm transition hover:scale-105 ${catColor.bg} ${catColor.text} ${catColor.border}`}
+                    title="Clique para alterar a categoria deste curso"
+                    className={`group/cat flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold backdrop-blur-md border shadow-sm transition hover:scale-105 active:scale-95 cursor-pointer ${catTheme.bg} ${catTheme.text} ${catTheme.border}`}
                   >
-                    <Tag className="w-3 h-3" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${catTheme.dot}`} />
                     <span>{course.category || 'Geral'}</span>
-                    <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover/cat:opacity-100 transition ml-0.5" />
-                  </span>
+                    <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover/cat:opacity-100 transition ml-0.5 text-slate-300" />
+                  </button>
                 </div>
 
                 <div className="absolute top-3 right-3">
@@ -600,7 +770,7 @@ export const CourseList: React.FC<CourseListProps> = ({
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-slate-200 focus:outline-none focus:border-red-500"
               />
-              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-950/40 rounded-xl border border-slate-800/80">
+              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-slate-800/80">
                 {Array.from(
                   new Set([
                     ...Object.keys(categoryMap),
@@ -615,23 +785,31 @@ export const CourseList: React.FC<CourseListProps> = ({
                     'C# / .NET',
                     'Banco de Dados',
                     'Git & DevOps',
+                    'Idiomas',
+                    'Design & UX',
+                    'Finanças & Negócios',
                   ])
                 )
-                  .sort()
-                  .map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setNewCategoryName(cat)}
-                      className={`px-2.5 py-1.5 sm:py-0.5 rounded-lg text-xs sm:text-[11px] transition active:scale-95 cursor-pointer ${
-                        newCategoryName === cat
-                          ? 'bg-red-600 text-white font-semibold shadow-sm'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/60'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                  .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+                  .map((cat) => {
+                    const theme = getCategoryTheme(cat);
+                    const isSelected = newCategoryName.trim().toLowerCase() === cat.toLowerCase();
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNewCategoryName(cat)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition active:scale-95 cursor-pointer border ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-bold border-cyan-300 shadow-sm'
+                            : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border-slate-800'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-slate-950' : theme.dot}`} />
+                        <span>{cat}</span>
+                      </button>
+                    );
+                  })}
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -643,9 +821,9 @@ export const CourseList: React.FC<CourseListProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex items-center justify-center transition active:scale-95"
+                  className="px-5 py-2 bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-slate-950 rounded-lg text-xs font-bold min-h-[44px] sm:min-h-[36px] flex items-center justify-center transition active:scale-95 shadow-md shadow-cyan-500/20"
                 >
-                  Salvar
+                  Salvar Categoria
                 </button>
               </div>
             </form>
