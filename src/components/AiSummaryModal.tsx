@@ -163,6 +163,11 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
                     Gemini Flash
                   </span>
                 )}
+                {summary?.aiModel === 'offline' && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-mono">
+                    Modo Offline
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 truncate max-w-md">
                 {summary?.title || 'Analisando e transcrevendo aula...'}
@@ -191,6 +196,16 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
             </div>
           ) : summary ? (
             <>
+              {/* Offline mode alert banner */}
+              {summary.aiModel === 'offline' && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5 text-xs text-amber-200">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-bold text-amber-300">Modo Offline Ativo:</span> Para ativar a transcrição oficial de áudio do YouTube e a reconstrução com o <strong>Gemini 1.5 Pro</strong>, adicione sua chave gratuita do Google AI Studio nas <strong>Configurações (ícone ⚙️)</strong>.
+                  </div>
+                </div>
+              )}
+
               {/* Overview Card */}
               <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-purple-300 uppercase tracking-wider">

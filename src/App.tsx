@@ -88,10 +88,12 @@ const AppContent: React.FC = () => {
   const handleCloudSync = async (activeUser: User, showToast = false) => {
     setIsSyncing(true);
     try {
-      // Carrega settings e streak da nuvem
-      const cloudSettings = loadUserSettingsFromCloud(activeUser, DEFAULT_SETTINGS);
+      // Carrega settings e streak da nuvem preservando configurações locais
+      const localSettings = loadSettings();
+      const cloudSettings = loadUserSettingsFromCloud(activeUser, localSettings);
       const cloudStreak = loadUserStreakFromCloud(activeUser, DEFAULT_STREAK);
       setSettings(cloudSettings);
+      saveSettings(cloudSettings);
       setStreak(cloudStreak);
 
       const mergedCourses = await syncAllCoursesWithCloud(coursesRef.current, activeUser.id);
@@ -337,6 +339,7 @@ const AppContent: React.FC = () => {
 
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
+    saveSettings(newSettings);
     if (user) {
       saveUserSettingsToCloud(user.id, newSettings);
     }

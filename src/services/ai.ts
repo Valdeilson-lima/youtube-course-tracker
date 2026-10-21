@@ -225,15 +225,25 @@ function generateOfflineSummary(
   const tips =
     'Pause nos momentos de demonstração para codificar ou reproduzir os passos no seu próprio ambiente de desenvolvimento.';
 
-  const isJsOrTs = cleanTitle.toLowerCase().includes('javascript') || cleanTitle.toLowerCase().includes('react') || cleanTitle.toLowerCase().includes('node');
-  const isPython = cleanTitle.toLowerCase().includes('python');
-
+  const lower = cleanTitle.toLowerCase();
   let sampleLang = 'javascript';
-  let sampleCode = `// Exemplo prático de implementação para a aula\nfunction executarExemplo() {\n  console.log("Praticando o conceito de: ${cleanTitle}");\n}\nexecutarExemplo();`;
+  let sampleCode = `// Estrutura prática para a aula: ${cleanTitle}\nfunction handleApplicationLogic() {\n  const status = "Conceito aplicado com sucesso";\n  console.log(status);\n}\nhandleApplicationLogic();`;
 
-  if (isPython) {
+  if (lower.includes('bootstrap') || lower.includes('css') || lower.includes('html')) {
+    sampleLang = 'html';
+    sampleCode = `<!-- Componente estruturado com Bootstrap e CSS padronizado -->\n<div class="container my-4">\n  <div class="card shadow-sm border-0 rounded-3">\n    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">\n      <h5 class="mb-0 fw-bold">Super Todo App</h5>\n      <span class="badge bg-primary">Bootstrap + Laravel</span>\n    </div>\n    <div class="card-body p-4">\n      <form class="row g-3 mb-4">\n        <div class="col-sm-9">\n          <input type="text" class="form-control form-control-lg" placeholder="Nova tarefa..." required>\n        </div>\n        <div class="col-sm-3">\n          <button type="submit" class="btn btn-primary btn-lg w-100 fw-semibold">Adicionar</button>\n        </div>\n      </form>\n    </div>\n  </div>\n</div>`;
+  } else if (lower.includes('laravel') || lower.includes('php')) {
+    sampleLang = 'php';
+    sampleCode = `<?php\n\nnamespace App\\Http\\Controllers;\n\nuse Illuminate\\Http\\Request;\nuse App\\Models\\Todo;\n\nclass TodoController extends Controller\n{\n    public function index()\n    {\n        $todos = Todo::latest()->get();\n        return view('todos.index', compact('todos'));\n    }\n}`;
+  } else if (lower.includes('python') || lower.includes('django') || lower.includes('fastapi') || lower.includes('flask')) {
     sampleLang = 'python';
-    sampleCode = `# Exemplo prático de implementação da aula\ndef executar_exemplo():\n    print("Praticando o conceito de: ${cleanTitle}")\n\nif __name__ == "__main__":\n    executar_exemplo()`;
+    sampleCode = `# Exemplo prático de implementação da aula\ndef executar_rotina(item: str) -> dict:\n    resultado = {"status": "concluido", "item": item}\n    print(f"Processando: {item}")\n    return resultado\n\nif __name__ == "__main__":\n    executar_rotina("${cleanTitle}")`;
+  } else if (lower.includes('react') || lower.includes('vue') || lower.includes('next')) {
+    sampleLang = 'typescript';
+    sampleCode = `import React, { useState } from 'react';\n\nexport const TodoComponent: React.FC = () => {\n  const [tasks, setTasks] = useState<string[]>([]);\n\n  const addTask = (newTask: string) => {\n    setTasks((prev) => [...prev, newTask]);\n  };\n\n  return (\n    <div className="p-4 rounded-xl bg-slate-900 text-white">\n      <h3 className="font-bold mb-2">${cleanTitle}</h3>\n    </div>\n  );\n};`;
+  } else if (lower.includes('sql') || lower.includes('banco') || lower.includes('database')) {
+    sampleLang = 'sql';
+    sampleCode = `-- Modelagem de dados para a aula\nCREATE TABLE IF NOT EXISTS todos (\n  id BIGSERIAL PRIMARY KEY,\n  title VARCHAR(255) NOT NULL,\n  completed BOOLEAN DEFAULT FALSE,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);`;
   }
 
   const markdown = `### 🎯 Resumo da Aula: ${cleanTitle}
