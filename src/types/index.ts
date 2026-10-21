@@ -9,6 +9,13 @@ export interface Lesson {
   notes?: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  color?: string;
+  createdAt?: string;
+}
+
 export interface Course {
   id: string;
   playlistId: string;
@@ -21,6 +28,7 @@ export interface Course {
   createdAt: string;
   lastAccessedAt: string;
   category?: string;
+  categoryId?: string;
 }
 
 export interface UserSettings {

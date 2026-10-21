@@ -6,9 +6,7 @@ export interface StudyStreakData {
   dailyGoal: number;
 }
 
-const STREAK_STORAGE_KEY = 'yt_course_tracker_streak';
-
-function getTodayString(): string {
+export function getTodayString(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -16,7 +14,7 @@ function getTodayString(): string {
   return `${year}-${month}-${day}`;
 }
 
-function getYesterdayString(): string {
+export function getYesterdayString(): string {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const year = yesterday.getFullYear();
@@ -25,7 +23,7 @@ function getYesterdayString(): string {
   return `${year}-${month}-${day}`;
 }
 
-const DEFAULT_STREAK: StudyStreakData = {
+export const DEFAULT_STREAK: StudyStreakData = {
   currentStreak: 1,
   bestStreak: 1,
   lastStudyDate: getTodayString(),
@@ -33,67 +31,66 @@ const DEFAULT_STREAK: StudyStreakData = {
   dailyGoal: 2,
 };
 
-export function getStudyStreak(): StudyStreakData {
-  try {
-    const raw = localStorage.getItem(STREAK_STORAGE_KEY);
-    if (!raw) return DEFAULT_STREAK;
-    const data: StudyStreakData = JSON.parse(raw);
+/**
+ * Normaliza o streak verificando se o dia virou
+ */
+export function normalizeStreakDate(streak: StudyStreakData): StudyStreakData {
+  const today = getTodayString();
+  const yesterday = getYesterdayString();
+  const data = { ...streak };
 
-    const today = getTodayString();
-    const yesterday = getYesterdayString();
-
-    // Reset daily count if today is a new day
-    if (data.lastStudyDate !== today) {
-      // Check if streak was broken (missed yesterday)
-      if (data.lastStudyDate !== yesterday) {
-        data.currentStreak = 0;
-      }
-      data.todayLessonsCompleted = 0;
+  if (data.lastStudyDate !== today) {
+    if (data.lastStudyDate !== yesterday && data.lastStudyDate !== '') {
+      data.currentStreak = 0;
     }
-
-    return data;
-  } catch {
-    return DEFAULT_STREAK;
+    data.todayLessonsCompleted = 0;
   }
+
+  return data;
+}
+
+/**
+ * Calcula a próxima sequência de estudo ao concluir uma aula (função pura para persistência em banco)
+ */
+export function calculateNextStreak(currentStreakData: StudyStreakData): StudyStreakData {
+  const normalized = normalizeStreakDate(currentStreakData);
+  const today = getTodayString();
+  const yesterday = getYesterdayString();
+  const current = { ...normalized };
+
+  if (current.lastStudyDate === today) {
+    current.todayLessonsCompleted += 1;
+  } else if (current.lastStudyDate === yesterday) {
+    current.currentStreak += 1;
+    current.todayLessonsCompleted = 1;
+    current.lastStudyDate = today;
+  } else {
+    current.currentStreak = 1;
+    current.todayLessonsCompleted = 1;
+    current.lastStudyDate = today;
+  }
+
+  if (current.currentStreak > current.bestStreak) {
+    current.bestStreak = current.currentStreak;
+  }
+
+  return current;
+}
+
+/**
+ * Mantido para compatibilidade, inicializando os dados padrão
+ */
+export function getStudyStreak(): StudyStreakData {
+  return DEFAULT_STREAK;
 }
 
 export function recordLessonCompleted(): StudyStreakData {
-  try {
-    const current = getStudyStreak();
-    const today = getTodayString();
-    const yesterday = getYesterdayString();
-
-    if (current.lastStudyDate === today) {
-      // Already studied today, just increment daily counter
-      current.todayLessonsCompleted += 1;
-    } else if (current.lastStudyDate === yesterday) {
-      // Studied yesterday, streak continues!
-      current.currentStreak += 1;
-      current.todayLessonsCompleted = 1;
-      current.lastStudyDate = today;
-    } else {
-      // Streak broken, start new streak of 1 day
-      current.currentStreak = 1;
-      current.todayLessonsCompleted = 1;
-      current.lastStudyDate = today;
-    }
-
-    if (current.currentStreak > current.bestStreak) {
-      current.bestStreak = current.currentStreak;
-    }
-
-    localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(current));
-    return current;
-  } catch {
-    return DEFAULT_STREAK;
-  }
+  return calculateNextStreak(DEFAULT_STREAK);
 }
 
-export function updateDailyGoal(newGoal: number): StudyStreakData {
-  const current = getStudyStreak();
-  current.dailyGoal = Math.max(1, newGoal);
-  try {
-    localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(current));
-  } catch {}
-  return current;
+export function updateDailyGoal(newGoal: number, currentStreak: StudyStreakData = DEFAULT_STREAK): StudyStreakData {
+  return {
+    ...currentStreak,
+    dailyGoal: Math.max(1, newGoal),
+  };
 }

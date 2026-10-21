@@ -122,6 +122,11 @@ interface ClassroomProps {
   settings: UserSettings;
   onBack: () => void;
   onUpdateCourse: (updatedCourse: Course) => void;
+  onUpdateLessonProgress?: (
+    courseId: string,
+    lessonId: string,
+    progress: Partial<import('../types').Lesson>
+  ) => void;
 }
 
 export const Classroom: React.FC<ClassroomProps> = ({
@@ -129,9 +134,12 @@ export const Classroom: React.FC<ClassroomProps> = ({
   settings,
   onBack,
   onUpdateCourse,
+  onUpdateLessonProgress,
 }) => {
   const toast = useToast();
   const playerRef = useRef<YouTubePlayerHandle>(null);
+  const notesDebounceRef = useRef<any>(null);
+  const positionDebounceRef = useRef<any>(null);
 
   // Always keep an up-to-date ref of course to prevent stale closures
   const courseRef = useRef<Course>(course);
@@ -331,7 +339,14 @@ export const Classroom: React.FC<ClassroomProps> = ({
     };
 
     courseRef.current = updatedCourse;
-    onUpdateCourse(updatedCourse);
+    if (onUpdateLessonProgress) {
+      onUpdateLessonProgress(currentLatest.id, lessonId, {
+        completed: newStatus,
+        completedAt: newStatus ? new Date().toISOString() : undefined,
+      });
+    } else {
+      onUpdateCourse(updatedCourse);
+    }
   };
 
   // Called automatically when YouTube video finishes
@@ -392,7 +407,14 @@ export const Classroom: React.FC<ClassroomProps> = ({
         lastAccessedAt: new Date().toISOString(),
       };
       courseRef.current = updatedCourse;
-      onUpdateCourse(updatedCourse);
+      if (onUpdateLessonProgress) {
+        onUpdateLessonProgress(currentLatest.id, activeLessonId, {
+          completed: true,
+          completedAt: new Date().toISOString(),
+        });
+      } else {
+        onUpdateCourse(updatedCourse);
+      }
     }
   };
 
@@ -406,16 +428,27 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
     // Save position periodically in lesson without touching completed status
     if (lesson && Math.abs((lesson.lastPositionSeconds || 0) - curr) > 5) {
+      const newPos = Math.floor(curr);
       const updatedLessons = currentLatest.lessons.map((l) =>
-        l.id === activeLessonId ? { ...l, lastPositionSeconds: Math.floor(curr) } : l
+        l.id === activeLessonId ? { ...l, lastPositionSeconds: newPos } : l
       );
       const updatedCourse = { ...currentLatest, lessons: updatedLessons };
       courseRef.current = updatedCourse;
-      onUpdateCourse(updatedCourse);
+
+      if (onUpdateLessonProgress) {
+        if (positionDebounceRef.current) clearTimeout(positionDebounceRef.current);
+        positionDebounceRef.current = setTimeout(() => {
+          onUpdateLessonProgress(currentLatest.id, activeLessonId, {
+            lastPositionSeconds: newPos,
+          });
+        }, 1000);
+      } else {
+        onUpdateCourse(updatedCourse);
+      }
     }
   };
 
-  // Save notes
+  // Save notes (com debounce para não sobrecarregar o banco na nuvem)
   const handleSaveNotes = (text: string) => {
     setNoteText(text);
     const currentLatest = courseRef.current;
@@ -424,7 +457,17 @@ export const Classroom: React.FC<ClassroomProps> = ({
     );
     const updatedCourse = { ...currentLatest, lessons: updatedLessons };
     courseRef.current = updatedCourse;
-    onUpdateCourse(updatedCourse);
+
+    if (notesDebounceRef.current) {
+      clearTimeout(notesDebounceRef.current);
+    }
+    notesDebounceRef.current = setTimeout(() => {
+      if (onUpdateLessonProgress) {
+        onUpdateLessonProgress(currentLatest.id, activeLessonId, { notes: text });
+      } else {
+        onUpdateCourse(updatedCourse);
+      }
+    }, 600);
   };
 
   // Insert timestamp into notes

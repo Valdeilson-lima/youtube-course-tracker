@@ -1,8 +1,5 @@
 import { Course, UserSettings } from '../types';
 
-const STORAGE_KEY_COURSES = 'tube_courses_v1';
-const STORAGE_KEY_SETTINGS = 'tube_settings_v1';
-
 export const DEFAULT_SETTINGS: UserSettings = {
   autoPlayNext: true,
   autoMarkCompleted: true,
@@ -124,42 +121,18 @@ export const INITIAL_DEMO_COURSES: Course[] = [
 ];
 
 export function loadCourses(): Course[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_COURSES);
-    if (!raw) {
-      saveCourses(INITIAL_DEMO_COURSES);
-      return INITIAL_DEMO_COURSES;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DEMO_COURSES;
-  } catch (e) {
-    console.error('Falha ao carregar cursos do localStorage:', e);
-    return INITIAL_DEMO_COURSES;
-  }
+  // A persistência agora é 100% no banco de dados (Supabase)
+  return INITIAL_DEMO_COURSES;
 }
 
-export function saveCourses(courses: Course[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_COURSES, JSON.stringify(courses));
-  } catch (e) {
-    console.error('Falha ao salvar cursos no localStorage:', e);
-  }
+export function saveCourses(_courses: Course[]): void {
+  // Desativado: dados são salvos diretamente no banco de dados
 }
 
 export function loadSettings(): UserSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch (e) {
-    return DEFAULT_SETTINGS;
-  }
+  return DEFAULT_SETTINGS;
 }
 
-export function saveSettings(settings: UserSettings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-  } catch (e) {
-    console.error('Falha ao salvar configurações:', e);
-  }
+export function saveSettings(_settings: UserSettings): void {
+  // Desativado: dados são salvos diretamente no banco de dados
 }

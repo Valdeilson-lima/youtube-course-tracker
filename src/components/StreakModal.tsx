@@ -23,7 +23,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({
 
   const handleSetGoal = (goal: number) => {
     setSelectedGoal(goal);
-    const updated = updateDailyGoal(goal);
+    const updated = updateDailyGoal(goal, streak);
     onUpdateStreak(updated);
     toast.success('Meta Atualizada! 🎯', `Sua meta agora é concluir ${goal} aulas por dia.`);
   };
