@@ -959,37 +959,37 @@ export const Classroom: React.FC<ClassroomProps> = ({
           )}
 
           {/* Action and Navigation Controls */}
-          <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
-            {/* Row 1: Anterior, Concluir, Próxima */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3 sm:p-4 shadow-lg space-y-3">
+            {/* Tier 1: Navegação Principal & Conclusão */}
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
               <button
                 onClick={goToPrevLesson}
                 disabled={activeLessonIndex <= 0}
                 aria-label="Aula anterior"
-                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] active:scale-95 cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline ml-1">Anterior</span>
+                <span className="hidden sm:inline">Anterior</span>
               </button>
 
               <button
                 onClick={() => toggleLessonCompletion(activeLesson.id)}
                 aria-label={activeLesson.completed ? 'Desmarcar conclusão' : 'Marcar como concluída'}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 shadow-md min-h-[44px] ${
+                className={`flex-1 max-w-md flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 shadow-md min-h-[44px] cursor-pointer ${
                   activeLesson.completed
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-                    : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25 border border-emerald-500/40'
+                    : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/25 border border-red-500/40'
                 }`}
               >
                 {activeLesson.completed ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>Aula Concluída</span>
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                    <span className="truncate">Aula Concluída</span>
                   </>
                 ) : (
                   <>
-                    <Circle className="w-4 h-4 shrink-0" />
-                    <span>Concluir Aula</span>
+                    <Circle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                    <span className="truncate">Concluir Aula</span>
                   </>
                 )}
               </button>
@@ -998,95 +998,102 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 onClick={goToNextLesson}
                 disabled={activeLessonIndex >= totalLessons - 1}
                 aria-label="Próxima aula"
-                className="p-2 sm:px-3 sm:py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] active:scale-95 cursor-pointer"
               >
-                <span className="hidden sm:inline mr-1">Próxima</span>
+                <span className="hidden sm:inline">Próxima</span>
                 <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
               </button>
             </div>
 
-            {/* Row 2: Lights Off, Theater Mode, Autoplay & Speed Selector */}
-            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/80 flex-wrap">
-              {/* Lights Off Button */}
-              <button
-                onClick={toggleLights}
-                title={isLightsOff ? 'Acender a luz (Atalho: D ou Esc)' : 'Apagar a luz para focar no vídeo (Atalho: D)'}
-                aria-label={isLightsOff ? 'Acender a luz' : 'Apagar a luz'}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] active:scale-95 ${
-                  isLightsOff
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md font-bold'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
-                }`}
-              >
-                {isLightsOff ? (
-                  <>
-                    <LightbulbOff className="w-4 h-4 text-slate-950 fill-current" />
-                    <span>Acender Luz [D]</span>
-                  </>
-                ) : (
-                  <>
-                    <Lightbulb className="w-4 h-4 text-amber-400" />
-                    <span>Apagar Luz</span>
-                    <kbd className="hidden md:inline px-1 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">D</kbd>
-                  </>
-                )}
-              </button>
+            {/* Separador sutil */}
+            <div className="h-px bg-slate-800/80" />
 
-              {/* Miniplayer (Picture-in-Picture) Button */}
-              <button
-                onClick={() => setIsMiniplayer(!isMiniplayer)}
-                title={isMiniplayer ? 'Restaurar para a tela principal (Atalho: I)' : 'Miniplayer flutuante para continuar assistindo enquanto anota (Atalho: I)'}
-                aria-label="Alternar miniplayer"
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] active:scale-95 ${
-                  isMiniplayer
-                    ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
-                }`}
-              >
-                <PictureInPicture2 className="w-4 h-4" />
-                <span className="hidden sm:inline">{isMiniplayer ? 'Restaurar' : 'Miniplayer'}</span>
-                <kbd className="hidden lg:inline px-1 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">I</kbd>
-              </button>
-
-              {/* Theater Mode Button */}
-              <button
-                onClick={() => setIsTheaterMode(!isTheaterMode)}
-                title="Modo Teatro: expande o vídeo na tela (Atalho: F)"
-                aria-label="Alternar modo teatro"
-                className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] active:scale-95 ${
-                  isTheaterMode
-                    ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
-                }`}
-              >
-                <Tv className="w-4 h-4" />
-                <span>{isTheaterMode ? 'Modo Normal' : 'Modo Teatro [F]'}</span>
-              </button>
-
-              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none min-h-[36px]">
-                <input
-                  type="checkbox"
-                  checked={autoPlayNext}
-                  onChange={(e) => setAutoPlayNext(e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-700 text-red-600 focus:ring-0 focus:ring-offset-0 w-4 h-4"
-                />
-                <span className="text-[11px] sm:text-xs font-medium">Avanço automático</span>
-              </label>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400 hidden sm:inline">Velocidade:</span>
-                <select
-                  value={playbackSpeed}
-                  onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-                  aria-label="Velocidade de reprodução"
-                  className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-semibold focus:outline-none focus:border-red-500 min-h-[40px] cursor-pointer"
+            {/* Tier 2: Ferramentas de Visualização & Preferências de Reprodução */}
+            <div className="flex flex-col min-[520px]:flex-row items-stretch min-[520px]:items-center justify-between gap-2.5 sm:gap-3">
+              {/* Grupo 1: Modos de Tela (Apagar Luz, Miniplayer, Teatro) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <button
+                  onClick={toggleLights}
+                  title={isLightsOff ? 'Acender a luz (Atalho: D ou Esc)' : 'Apagar a luz para focar no vídeo (Atalho: D)'}
+                  aria-label={isLightsOff ? 'Acender a luz' : 'Apagar a luz'}
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] sm:min-h-[36px] active:scale-95 cursor-pointer flex-1 min-[520px]:flex-none ${
+                    isLightsOff
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/20'
+                      : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
+                  }`}
                 >
-                  <option value={0.75}>0.75x</option>
-                  <option value={1}>1.0x</option>
-                  <option value={1.25}>1.25x</option>
-                  <option value={1.5}>1.5x</option>
-                  <option value={2}>2.0x</option>
-                </select>
+                  {isLightsOff ? (
+                    <>
+                      <LightbulbOff className="w-4 h-4 text-slate-950 fill-current" />
+                      <span>Acender Luz</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lightbulb className="w-4 h-4 text-amber-400" />
+                      <span>Apagar Luz</span>
+                      <kbd className="hidden md:inline px-1 py-0.5 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">D</kbd>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setIsMiniplayer(!isMiniplayer)}
+                  title={isMiniplayer ? 'Restaurar para a tela principal (Atalho: I)' : 'Miniplayer flutuante para continuar assistindo enquanto anota (Atalho: I)'}
+                  aria-label="Alternar miniplayer"
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] sm:min-h-[36px] active:scale-95 cursor-pointer flex-1 min-[520px]:flex-none ${
+                    isMiniplayer
+                      ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm font-bold'
+                      : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <PictureInPicture2 className="w-4 h-4 text-red-400" />
+                  <span>{isMiniplayer ? 'Restaurar' : 'Miniplayer'}</span>
+                  <kbd className="hidden lg:inline px-1 py-0.5 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">I</kbd>
+                </button>
+
+                <button
+                  onClick={() => setIsTheaterMode(!isTheaterMode)}
+                  title="Modo Teatro: expande o vídeo na tela (Atalho: F)"
+                  aria-label="Alternar modo teatro"
+                  className={`hidden sm:inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] sm:min-h-[36px] active:scale-95 cursor-pointer ${
+                    isTheaterMode
+                      ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm font-bold'
+                      : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Tv className="w-4 h-4" />
+                  <span>{isTheaterMode ? 'Teatro Ativo' : 'Modo Teatro'}</span>
+                  <kbd className="hidden md:inline px-1 py-0.5 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">F</kbd>
+                </button>
+              </div>
+
+              {/* Grupo 2: Preferências (Avanço Automático & Velocidade) */}
+              <div className="flex items-center justify-between min-[520px]:justify-end gap-2 sm:gap-2.5">
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 cursor-pointer select-none hover:border-slate-700 transition min-h-[40px] sm:min-h-[36px]">
+                  <input
+                    type="checkbox"
+                    checked={autoPlayNext}
+                    onChange={(e) => setAutoPlayNext(e.target.checked)}
+                    className="rounded bg-slate-900 border-slate-700 text-red-600 focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-medium whitespace-nowrap">Avanço automático</span>
+                </label>
+
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-300 min-h-[40px] sm:min-h-[36px]">
+                  <span className="text-[11px] text-slate-400 hidden lg:inline">Velocidade:</span>
+                  <select
+                    value={playbackSpeed}
+                    onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                    aria-label="Velocidade de reprodução"
+                    className="bg-transparent text-slate-200 text-xs font-bold focus:outline-none cursor-pointer pr-1"
+                  >
+                    <option value={0.75} className="bg-slate-900 text-white">0.75x</option>
+                    <option value={1} className="bg-slate-900 text-white">1.0x</option>
+                    <option value={1.25} className="bg-slate-900 text-white">1.25x</option>
+                    <option value={1.5} className="bg-slate-900 text-white">1.5x</option>
+                    <option value={2} className="bg-slate-900 text-white">2.0x</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
