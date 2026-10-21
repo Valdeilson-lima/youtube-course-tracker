@@ -1467,21 +1467,28 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
 
-        {/* 3. Lessons Sidebar (Na tela menor, abre logo abaixo das abas e do vídeo sem ocultar o reprodutor) */}
+        {/* 3. Lessons Sidebar (Na tela menor, abre logo abaixo das abas e do vídeo com margens responsivas) */}
         <div
           className={`w-full transition-all duration-300 ${
             isTheaterMode
-              ? 'lg:col-start-2 lg:col-end-3 lg:row-start-2 rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden flex flex-col h-[750px] lg:sticky lg:top-20'
-              : 'lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 bg-slate-900 rounded-2xl lg:rounded-none border border-slate-800 lg:border-t-0 lg:border-l flex flex-col max-h-[75vh] lg:max-h-none lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-hidden'
+              ? 'lg:col-start-2 lg:col-end-3 lg:row-start-2 lg:sticky lg:top-20'
+              : 'px-2 sm:px-6 pb-6 pt-1 lg:p-0 lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-16'
           } ${
             !isLessonsSidebarOpen
               ? 'hidden'
               : mobileTab === 'lessons'
-              ? 'flex'
-              : 'hidden lg:flex'
+              ? 'flex flex-col'
+              : 'hidden lg:flex lg:flex-col'
           }`}
         >
-          {/* Sidebar Header with Filter Tabs and Search */}
+          <div
+            className={`w-full bg-slate-900 overflow-hidden flex flex-col shadow-xl ${
+              isTheaterMode
+                ? 'rounded-2xl border border-slate-800 h-[750px]'
+                : 'rounded-2xl lg:rounded-none border border-slate-800 lg:border-t-0 lg:border-r-0 lg:border-b-0 lg:border-l h-auto max-h-[75vh] lg:max-h-none lg:h-[calc(100vh-4rem)]'
+            }`}
+          >
+            {/* Sidebar Header with Filter Tabs and Search */}
           <div className="p-3 sm:p-4 border-b border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1641,6 +1648,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
           </div>
         </div>
       </div>
+    </div>
 
       {/* Floating Dock Button to Reopen Lessons List on Desktop */}
       {!isLessonsSidebarOpen && !isLightsOff && (
