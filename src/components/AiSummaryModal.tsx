@@ -23,6 +23,69 @@ interface AiSummaryModalProps {
   onInsertIntoNotes: (markdownToAppend: string) => void;
 }
 
+const HighlightedCode: React.FC<{ code: string; language: string }> = ({ code }) => {
+  const lines = code.split('\n');
+
+  const highlightSyntax = (raw: string) => {
+    // Escape HTML special characters
+    let escaped = raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Comentários: // ou # ou /*
+    if (escaped.trim().startsWith('//') || escaped.trim().startsWith('#')) {
+      return `<span class="text-slate-500 italic">${escaped}</span>`;
+    }
+
+    // Strings
+    escaped = escaped.replace(
+      /(["'`].*?["'`])/g,
+      '<span class="text-emerald-300 font-medium">$1</span>'
+    );
+
+    // Palavras-chave essenciais de programação
+    escaped = escaped.replace(
+      /\b(const|let|var|function|def|class|return|import|export|from|async|await|if|else|elif|for|while|try|catch|except|finally|new|public|private|interface|type|select|where|insert|update|delete|as|yield|lambda)\b/g,
+      '<span class="text-purple-400 font-bold">$1</span>'
+    );
+
+    // Booleanos e nulos
+    escaped = escaped.replace(
+      /\b(true|false|True|False|null|None|undefined)\b/g,
+      '<span class="text-amber-400 font-bold">$1</span>'
+    );
+
+    // Números isolados
+    escaped = escaped.replace(
+      /\b(\d+(\.\d+)?)\b/g,
+      '<span class="text-amber-300">$1</span>'
+    );
+
+    return escaped;
+  };
+
+  return (
+    <div className="font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto p-3.5 select-text bg-slate-950/90 scrollbar-thin">
+      <table className="w-full border-collapse">
+        <tbody>
+          {lines.map((line, idx) => (
+            <tr key={idx} className="hover:bg-slate-900/50 transition-colors">
+              <td className="w-7 select-none text-slate-600 font-mono text-[11px] pr-3 text-right align-top pt-0.5 opacity-60">
+                {idx + 1}
+              </td>
+              <td
+                className="whitespace-pre text-slate-200"
+                dangerouslySetInnerHTML={{ __html: highlightSyntax(line) || '&nbsp;' }}
+              />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
   isOpen,
   onClose,
@@ -207,10 +270,8 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({
                           </button>
                         </div>
 
-                        {/* Code Body */}
-                        <pre className="p-4 text-xs sm:text-[13px] font-mono text-emerald-300/90 overflow-x-auto whitespace-pre leading-relaxed scrollbar-thin">
-                          <code>{snippet.code}</code>
-                        </pre>
+                        {/* Code Body with Highlighting and Line Numbers */}
+                        <HighlightedCode code={snippet.code} language={snippet.language} />
                       </div>
                     ))}
                   </div>

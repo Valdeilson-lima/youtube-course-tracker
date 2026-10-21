@@ -465,6 +465,7 @@ const AppContent: React.FC = () => {
           <CourseList
             courses={courses}
             user={user}
+            isLoading={isAuthChecking || isSyncing}
             onSelectCourse={handleSelectCourse}
             onDeleteCourse={handleDeleteCourse}
             onResetCourseProgress={handleResetCourseProgress}

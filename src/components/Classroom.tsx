@@ -41,6 +41,9 @@ import {
   X,
   AlertCircle,
   Database,
+  Rewind,
+  FastForward,
+  Volume2,
 } from 'lucide-react';
 
 function formatTime(totalSeconds: number): string {
@@ -983,15 +986,66 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <button
                 onClick={goToPrevLesson}
                 disabled={activeLessonIndex <= 0}
+                title="Aula anterior (Atalho: P)"
                 aria-label="Aula anterior"
                 className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] active:scale-95 cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Anterior</span>
+                <kbd className="hidden md:inline px-1.5 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">P</kbd>
               </button>
+
+              {/* Botões rápidos de reprodução (-10s, Play/Pause, +10s) */}
+              <div className="hidden lg:flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => playerRef.current?.rewind(10)}
+                  title="Voltar 10 segundos (Atalho: J)"
+                  aria-label="Voltar 10 segundos"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition active:scale-95 cursor-pointer"
+                >
+                  <Rewind className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-[11px] font-mono">-10s</span>
+                  <kbd className="px-1 py-0.2 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">J</kbd>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => playerRef.current?.togglePlay()}
+                  title="Reproduzir / Pausar (Atalho: Espaço ou K)"
+                  aria-label="Reproduzir ou Pausar"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-slate-800 transition active:scale-95 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+                  <kbd className="px-1 py-0.2 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">Espaço</kbd>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => playerRef.current?.forward(10)}
+                  title="Avançar 10 segundos (Atalho: L)"
+                  aria-label="Avançar 10 segundos"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition active:scale-95 cursor-pointer"
+                >
+                  <span className="text-[11px] font-mono">+10s</span>
+                  <FastForward className="w-3.5 h-3.5 text-slate-400" />
+                  <kbd className="px-1 py-0.2 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">L</kbd>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => playerRef.current?.toggleMute()}
+                  title="Alternar áudio mudo (Atalho: M)"
+                  aria-label="Alternar áudio mudo"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition active:scale-95 cursor-pointer"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
               <button
                 onClick={() => toggleLessonCompletion(activeLesson.id)}
+                title={activeLesson.completed ? 'Desmarcar conclusão (Atalho: C)' : 'Marcar como concluída (Atalho: C)'}
                 aria-label={activeLesson.completed ? 'Desmarcar conclusão' : 'Marcar como concluída'}
                 className={`flex-1 max-w-md flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition active:scale-95 shadow-md min-h-[44px] cursor-pointer ${
                   activeLesson.completed
@@ -1003,11 +1057,13 @@ export const Classroom: React.FC<ClassroomProps> = ({
                   <>
                     <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                     <span className="truncate">Aula Concluída</span>
+                    <kbd className="hidden sm:inline px-1.5 py-0.5 text-[10px] bg-black/30 border border-white/20 rounded text-white font-mono font-bold">C</kbd>
                   </>
                 ) : (
                   <>
                     <Circle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                     <span className="truncate">Concluir Aula</span>
+                    <kbd className="hidden sm:inline px-1.5 py-0.5 text-[10px] bg-black/30 border border-white/20 rounded text-white font-mono font-bold">C</kbd>
                   </>
                 )}
               </button>
@@ -1015,10 +1071,12 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <button
                 onClick={goToNextLesson}
                 disabled={activeLessonIndex >= totalLessons - 1}
+                title="Próxima aula (Atalho: N)"
                 aria-label="Próxima aula"
                 className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none text-slate-200 rounded-xl transition border border-slate-700 shrink-0 min-h-[44px] active:scale-95 cursor-pointer"
               >
                 <span className="hidden sm:inline">Próxima</span>
+                <kbd className="hidden md:inline px-1.5 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">N</kbd>
                 <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
               </button>
             </div>

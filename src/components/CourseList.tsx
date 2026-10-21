@@ -28,6 +28,7 @@ import {
 interface CourseListProps {
   courses: Course[];
   user: User | null;
+  isLoading?: boolean;
   onSelectCourse: (course: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onResetCourseProgress: (courseId: string) => void;
@@ -36,6 +37,29 @@ interface CourseListProps {
   onOpenAuthModal?: () => void;
   onSyncCoursePlaylist?: (course: Course) => Promise<void> | void;
 }
+
+export const CourseCardSkeleton: React.FC = () => (
+  <div className="flex flex-col bg-slate-900/90 rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl animate-pulse">
+    <div className="aspect-video w-full bg-slate-950/80 relative">
+      <div className="absolute top-3 left-3 w-24 h-6 bg-slate-800/80 rounded-lg" />
+      <div className="absolute top-3 right-3 w-16 h-6 bg-slate-800/80 rounded-lg" />
+      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-800" />
+    </div>
+    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-5">
+      <div className="space-y-2.5">
+        <div className="h-3 bg-slate-800/60 rounded-md w-1/3" />
+        <div className="h-5 bg-slate-800 rounded-lg w-4/5" />
+        <div className="h-3.5 bg-slate-800/40 rounded w-2/3" />
+        <div className="h-3 bg-slate-800/50 rounded w-1/2 pt-1" />
+      </div>
+      <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
+        <div className="h-10 bg-slate-800/80 rounded-xl flex-1" />
+        <div className="h-10 w-10 bg-slate-800/60 rounded-xl shrink-0" />
+        <div className="h-10 w-10 bg-slate-800/60 rounded-xl shrink-0" />
+      </div>
+    </div>
+  </div>
+);
 
 export interface CategoryTheme {
   bg: string;
@@ -170,6 +194,7 @@ export const getCategoryTheme = (category: string): CategoryTheme => {
 export const CourseList: React.FC<CourseListProps> = ({
   courses,
   user,
+  isLoading = false,
   onSelectCourse,
   onDeleteCourse,
   onResetCourseProgress,
@@ -272,6 +297,42 @@ export const CourseList: React.FC<CourseListProps> = ({
     }
     setEditingCourseId(null);
   };
+
+  // Skeleton Loading State (CLS < 0.1)
+  if (isLoading && courses.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 animate-fade-in">
+        {/* Skeleton Hero Banner */}
+        <div className="study-hero relative overflow-hidden rounded-2xl sm:rounded-3xl border border-sky-300/15 p-6 sm:p-10 animate-pulse">
+          <div className="space-y-3 max-w-xl">
+            <div className="h-4 w-36 bg-cyan-300/20 rounded-full" />
+            <div className="h-8 sm:h-10 w-3/4 bg-slate-800 rounded-xl" />
+            <div className="h-4 w-1/2 bg-slate-800/60 rounded-lg" />
+          </div>
+        </div>
+
+        {/* Skeleton Controls Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 animate-pulse">
+          <div className="h-4 w-40 bg-slate-800 rounded-md" />
+          <div className="h-10 w-full sm:w-72 bg-slate-950 rounded-xl" />
+        </div>
+
+        {/* Skeleton Categories Track */}
+        <div className="flex items-center gap-2 overflow-hidden py-1">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-9 w-28 bg-slate-900/80 rounded-xl border border-slate-800/60 animate-pulse shrink-0" />
+          ))}
+        </div>
+
+        {/* Skeleton Course Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <CourseCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (courses.length === 0) {
     return (
