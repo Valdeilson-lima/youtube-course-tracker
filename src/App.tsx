@@ -26,7 +26,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
 import { OfflineBanner } from './components/OfflineBanner';
 import { StreakModal } from './components/StreakModal';
-import { DEFAULT_STREAK, StudyStreakData } from './utils/streak';
+import { DEFAULT_STREAK, StudyStreakData, calculateNextStreak, recordStudyTime } from './utils/streak';
 import { syncCoursePlaylist } from './services/youtube';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { Smartphone, AlertCircle, Database, RefreshCw } from 'lucide-react';
@@ -180,6 +180,53 @@ const AppContent: React.FC = () => {
         console.error('Falha ao atualizar curso na nuvem:', err)
       );
     }
+  };
+
+  const handleUpdateLessonProgress = (
+    courseId: string,
+    lessonId: string,
+    partialProgress: Partial<import('./types').Lesson>
+  ) => {
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        const updatedLessons = c.lessons.map((l) =>
+          l.id === lessonId ? { ...l, ...partialProgress } : l
+        );
+        const updatedCourse = {
+          ...c,
+          lessons: updatedLessons,
+          lastAccessedAt: new Date().toISOString(),
+        };
+
+        if (user) {
+          saveCourseToCloud(updatedCourse, user.id).catch(console.error);
+        }
+
+        return updatedCourse;
+      })
+    );
+
+    // Se completou a aula, avança o streak diário
+    if (partialProgress.completed) {
+      setStreak((prev) => {
+        const next = calculateNextStreak(prev);
+        if (user) {
+          saveUserStreakToCloud(user.id, next);
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleRecordStudyTime = (seconds: number) => {
+    setStreak((prev) => {
+      const updated = recordStudyTime(seconds, prev);
+      if (user) {
+        saveUserStreakToCloud(user.id, updated);
+      }
+      return updated;
+    });
   };
 
   const handleUpdateCourseCategory = (courseId: string, newCategory: string) => {
@@ -410,6 +457,8 @@ const AppContent: React.FC = () => {
             settings={settings}
             onBack={handleBackToDashboard}
             onUpdateCourse={handleUpdateCourse}
+            onUpdateLessonProgress={handleUpdateLessonProgress}
+            onRecordStudyTime={handleRecordStudyTime}
           />
         ) : (
           <CourseList

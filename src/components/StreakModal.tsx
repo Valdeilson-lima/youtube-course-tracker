@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Flame, Trophy, Target, CheckCircle2, X, Sparkles } from 'lucide-react';
-import { StudyStreakData, updateDailyGoal } from '../utils/streak';
+import { Flame, Trophy, Target, CheckCircle2, X, Sparkles, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { StudyStreakData, updateDailyGoal, formatHoursAndMinutes } from '../utils/streak';
 import { useToast } from '../context/ToastContext';
 
 interface StreakModalProps {
@@ -101,6 +101,34 @@ export const StreakModal: React.FC<StreakModalProps> = ({
               Complete mais {Math.max(0, streak.dailyGoal - streak.todayLessonsCompleted)} aula(s) hoje para manter a chama acesa.
             </p>
           )}
+        </div>
+
+        {/* Horímetro de Estudos (Tempo Real Acumulado) */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
+            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            Horímetro de Estudo
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Hoje</span>
+              <span className="text-sm sm:text-base font-extrabold text-white font-mono">
+                {formatHoursAndMinutes(streak.todaySecondsStudied || 0)}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Esta Semana</span>
+              <span className="text-sm sm:text-base font-extrabold text-cyan-400 font-mono">
+                {formatHoursAndMinutes(streak.weeklySecondsStudied || 0)}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+              <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Tempo Total</span>
+              <span className="text-sm sm:text-base font-extrabold text-amber-400 font-mono">
+                {formatHoursAndMinutes(streak.totalSecondsStudied || 0)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Change Goal */}

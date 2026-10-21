@@ -3,6 +3,8 @@ import { Course, UserSettings } from '../types';
 import { YouTubePlayer, YouTubePlayerHandle } from './YouTubePlayer';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { CourseCompletedModal } from './CourseCompletedModal';
+import { AiSummaryModal } from './AiSummaryModal';
+import { generateLessonSummary, LessonSummary } from '../services/ai';
 import { fireLessonConfetti, fireCourseCompletedConfetti } from '../utils/confetti';
 import { useToast } from '../context/ToastContext';
 import { calculateCourseTimeStats } from '../utils/duration';
@@ -33,6 +35,11 @@ import {
   LightbulbOff,
   PanelRightClose,
   PanelRightOpen,
+  PictureInPicture2,
+  Maximize2,
+  X,
+  AlertCircle,
+  Database,
 } from 'lucide-react';
 
 function formatTime(totalSeconds: number): string {
@@ -127,6 +134,7 @@ interface ClassroomProps {
     lessonId: string,
     progress: Partial<import('../types').Lesson>
   ) => void;
+  onRecordStudyTime?: (seconds: number) => void;
 }
 
 export const Classroom: React.FC<ClassroomProps> = ({
@@ -135,11 +143,64 @@ export const Classroom: React.FC<ClassroomProps> = ({
   onBack,
   onUpdateCourse,
   onUpdateLessonProgress,
+  onRecordStudyTime,
 }) => {
   const toast = useToast();
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const notesDebounceRef = useRef<any>(null);
   const positionDebounceRef = useRef<any>(null);
+
+  // Status de salvamento no banco de dados na nuvem
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('saved');
+  const [lastSavedTime, setLastSavedTime] = useState<string>(() =>
+    new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  );
+
+  const notifySave = (type: 'saving' | 'saved' | 'error') => {
+    setSaveStatus(type);
+    if (type === 'saved') {
+      setLastSavedTime(
+        new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
+    }
+  };
+
+  // Miniplayer (Picture-in-Picture)
+  const [isMiniplayer, setIsMiniplayer] = useState(false);
+
+  // Resumo com Inteligência Artificial (Gemini)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [currentSummary, setCurrentSummary] = useState<LessonSummary | null>(null);
+
+  // Horímetro de Estudo: acumula segundos de vídeo ativamente assistido
+  const isPlayingRef = useRef(false);
+  const studyTimerAccumulatorRef = useRef(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (isPlayingRef.current) {
+        studyTimerAccumulatorRef.current += 1;
+        // A cada 15 segundos em reprodução, envia ao horímetro
+        if (studyTimerAccumulatorRef.current >= 15) {
+          onRecordStudyTime?.(studyTimerAccumulatorRef.current);
+          studyTimerAccumulatorRef.current = 0;
+        }
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+      if (studyTimerAccumulatorRef.current > 0) {
+        onRecordStudyTime?.(studyTimerAccumulatorRef.current);
+        studyTimerAccumulatorRef.current = 0;
+      }
+    };
+  }, [onRecordStudyTime]);
+
+  const handlePlaybackStateChange = (isPlaying: boolean) => {
+    isPlayingRef.current = isPlaying;
+  };
 
   // Always keep an up-to-date ref of course to prevent stale closures
   const courseRef = useRef<Course>(course);
@@ -339,13 +400,16 @@ export const Classroom: React.FC<ClassroomProps> = ({
     };
 
     courseRef.current = updatedCourse;
+    notifySave('saving');
     if (onUpdateLessonProgress) {
       onUpdateLessonProgress(currentLatest.id, lessonId, {
         completed: newStatus,
         completedAt: newStatus ? new Date().toISOString() : undefined,
       });
+      setTimeout(() => notifySave('saved'), 400);
     } else {
       onUpdateCourse(updatedCourse);
+      setTimeout(() => notifySave('saved'), 400);
     }
   };
 
@@ -451,6 +515,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Save notes (com debounce para não sobrecarregar o banco na nuvem)
   const handleSaveNotes = (text: string) => {
     setNoteText(text);
+    notifySave('saving');
     const currentLatest = courseRef.current;
     const updatedLessons = currentLatest.lessons.map((l) =>
       l.id === activeLessonId ? { ...l, notes: text } : l
@@ -467,7 +532,34 @@ export const Classroom: React.FC<ClassroomProps> = ({
       } else {
         onUpdateCourse(updatedCourse);
       }
+      notifySave('saved');
     }, 600);
+  };
+
+  // Gerador de Resumo com Inteligência Artificial
+  const handleGenerateSummary = async () => {
+    setIsAiModalOpen(true);
+    setIsGeneratingSummary(true);
+    try {
+      const summary = await generateLessonSummary(
+        activeLesson.title,
+        course.title,
+        course.channelTitle,
+        settings.geminiApiKey
+      );
+      setCurrentSummary(summary);
+    } catch (err) {
+      toast.error('Erro na IA', 'Não foi possível gerar o resumo da aula.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  const handleInsertSummaryIntoNotes = (markdownToAppend: string) => {
+    const newText = noteText
+      ? `${noteText}\n\n---\n${markdownToAppend}`
+      : markdownToAppend;
+    handleSaveNotes(newText);
   };
 
   // Insert timestamp into notes
@@ -552,6 +644,10 @@ export const Classroom: React.FC<ClassroomProps> = ({
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         toggleLessonsSidebar();
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
+        setIsMiniplayer((prev) => !prev);
+        toast.info('Miniplayer', !isMiniplayer ? 'Modo miniplayer ativado' : 'Restaurado para tela principal');
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         playerRef.current?.toggleMute();
@@ -777,9 +873,58 @@ export const Classroom: React.FC<ClassroomProps> = ({
             isLightsOff ? 'relative z-[60]' : ''
           }`}
         >
+          {/* Placeholder quando o vídeo está no Miniplayer */}
+          {isMiniplayer && (
+            <div className="w-full aspect-video rounded-2xl bg-slate-900/60 border-2 border-dashed border-slate-800 flex flex-col items-center justify-center p-6 text-center text-slate-400 gap-3">
+              <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                <PictureInPicture2 className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Vídeo reproduzindo no Miniplayer flutuante</p>
+                <p className="text-xs text-slate-400">Você pode rolar a tela, fazer anotações e navegar nas aulas sem pausar o vídeo.</p>
+              </div>
+              <button
+                onClick={() => setIsMiniplayer(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl border border-slate-700 transition active:scale-95 cursor-pointer"
+              >
+                Restaurar para Tela Principal
+              </button>
+            </div>
+          )}
+
           {/* YouTube Player & Resume notification */}
           {activeLesson && (
-            <div className={`space-y-2 transition-all duration-300 ${isLightsOff ? 'rounded-2xl ring-2 ring-amber-500/30 shadow-2xl shadow-amber-500/10' : ''}`}>
+            <div
+              className={
+                isMiniplayer
+                  ? 'fixed bottom-5 right-5 z-50 w-80 sm:w-96 rounded-2xl shadow-2xl border-2 border-slate-700 bg-slate-950 overflow-hidden ring-4 ring-black/60 transition-all duration-300'
+                  : `space-y-2 transition-all duration-300 ${isLightsOff ? 'rounded-2xl ring-2 ring-amber-500/30 shadow-2xl shadow-amber-500/10' : ''}`
+              }
+            >
+              {isMiniplayer && (
+                <div className="bg-slate-900 px-3 py-1.5 flex items-center justify-between border-b border-slate-800 text-xs">
+                  <span className="font-semibold text-white truncate max-w-[220px]">
+                    {activeLesson?.title}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setIsMiniplayer(false)}
+                      title="Restaurar tamanho normal"
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setIsMiniplayer(false)}
+                      title="Fechar miniplayer"
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <YouTubePlayer
                 key={activeLesson.id}
                 ref={playerRef}
@@ -788,10 +933,11 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 playbackRate={playbackSpeed}
                 onEnded={handleVideoEnded}
                 onTimeUpdate={handleTimeUpdate}
+                onPlaybackStateChange={handlePlaybackStateChange}
               />
 
               {/* Resume notification banner if position was saved */}
-              {activeLesson.lastPositionSeconds && activeLesson.lastPositionSeconds > 5 && (!activeLesson.completed || activeLesson.lastPositionSeconds < (videoDuration - 10)) && (
+              {!isMiniplayer && activeLesson.lastPositionSeconds && activeLesson.lastPositionSeconds > 5 && (!activeLesson.completed || activeLesson.lastPositionSeconds < (videoDuration - 10)) && (
                 <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
@@ -886,6 +1032,22 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 )}
               </button>
 
+              {/* Miniplayer (Picture-in-Picture) Button */}
+              <button
+                onClick={() => setIsMiniplayer(!isMiniplayer)}
+                title={isMiniplayer ? 'Restaurar para a tela principal (Atalho: I)' : 'Miniplayer flutuante para continuar assistindo enquanto anota (Atalho: I)'}
+                aria-label="Alternar miniplayer"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] active:scale-95 ${
+                  isMiniplayer
+                    ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
+                }`}
+              >
+                <PictureInPicture2 className="w-4 h-4" />
+                <span className="hidden sm:inline">{isMiniplayer ? 'Restaurar' : 'Miniplayer'}</span>
+                <kbd className="hidden lg:inline px-1 py-0.5 text-[10px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">I</kbd>
+              </button>
+
               {/* Theater Mode Button */}
               <button
                 onClick={() => setIsTheaterMode(!isTheaterMode)}
@@ -931,12 +1093,34 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
           {/* Current Lesson Title */}
           <div className="px-1 sm:px-0">
-            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-red-400 font-semibold mb-1">
-              <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
-                AULA {activeLessonIndex + 1}
-              </span>
-              <span>•</span>
-              <span className="truncate">{course.channelTitle}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-2 text-[11px] sm:text-xs text-red-400 font-semibold">
+                <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
+                  AULA {activeLessonIndex + 1}
+                </span>
+                <span>•</span>
+                <span className="truncate">{course.channelTitle}</span>
+              </div>
+
+              {/* Status de Salvamento no Banco de Dados */}
+              <div className="flex items-center gap-1.5">
+                {saveStatus === 'saving' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
+                    Salvando no banco...
+                  </span>
+                ) : saveStatus === 'saved' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <Database className="w-3 h-3 text-emerald-400" />
+                    Salvo no banco às {lastSavedTime}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                    <AlertCircle className="w-3 h-3 text-rose-400" />
+                    Erro ao salvar
+                  </span>
+                )}
+              </div>
             </div>
             <h1 className="text-base sm:text-xl lg:text-2xl font-extrabold text-white tracking-tight leading-snug">
               {activeLesson?.title}
@@ -1012,6 +1196,16 @@ export const Classroom: React.FC<ClassroomProps> = ({
                       <span>Visualizar</span>
                     </button>
                   </div>
+
+                  {/* Botão Resumo com IA */}
+                  <button
+                    onClick={handleGenerateSummary}
+                    title="Gerar resumo inteligente da aula com Inteligência Artificial"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg shadow-sm shadow-purple-500/20 transition active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                    <span>Resumo com IA</span>
+                  </button>
 
                   <button
                     onClick={insertTimestamp}
@@ -1092,7 +1286,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 <FileText className="w-4 h-4 text-red-500" />
                 <span>Anotações da Aula {activeLessonIndex + 1}</span>
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  onClick={handleGenerateSummary}
+                  title="Resumo com IA"
+                  className="flex items-center gap-1 px-2.5 py-2 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-sm min-h-[40px] active:scale-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>IA</span>
+                </button>
                 <button
                   onClick={insertTimestamp}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[40px] active:scale-95"
@@ -1344,6 +1546,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
         onClose={() => setIsCompletedModalOpen(false)}
         onDownloadNotes={downloadCourseNotes}
         onBackToDashboard={onBack}
+      />
+
+      {/* AI Lesson Summary Modal */}
+      <AiSummaryModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        summary={currentSummary}
+        isLoading={isGeneratingSummary}
+        onInsertIntoNotes={handleInsertSummaryIntoNotes}
       />
     </div>
   );

@@ -4,6 +4,9 @@ export interface StudyStreakData {
   lastStudyDate: string; // Format "YYYY-MM-DD"
   todayLessonsCompleted: number;
   dailyGoal: number;
+  totalSecondsStudied: number;
+  todaySecondsStudied: number;
+  weeklySecondsStudied: number;
 }
 
 export function getTodayString(): string {
@@ -29,7 +32,24 @@ export const DEFAULT_STREAK: StudyStreakData = {
   lastStudyDate: getTodayString(),
   todayLessonsCompleted: 0,
   dailyGoal: 2,
+  totalSecondsStudied: 0,
+  todaySecondsStudied: 0,
+  weeklySecondsStudied: 0,
 };
+
+/**
+ * Formata segundos em texto amigável (ex: "4h 25min" ou "45min")
+ */
+export function formatHoursAndMinutes(totalSeconds: number = 0): string {
+  if (!totalSeconds || totalSeconds <= 0) return '0 min';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
+  }
+  return `${Math.max(1, minutes)} min`;
+}
 
 /**
  * Normaliza o streak verificando se o dia virou
@@ -37,16 +57,40 @@ export const DEFAULT_STREAK: StudyStreakData = {
 export function normalizeStreakDate(streak: StudyStreakData): StudyStreakData {
   const today = getTodayString();
   const yesterday = getYesterdayString();
-  const data = { ...streak };
+  const data = {
+    ...DEFAULT_STREAK,
+    ...streak,
+  };
 
   if (data.lastStudyDate !== today) {
     if (data.lastStudyDate !== yesterday && data.lastStudyDate !== '') {
       data.currentStreak = 0;
     }
     data.todayLessonsCompleted = 0;
+    data.todaySecondsStudied = 0;
   }
 
   return data;
+}
+
+/**
+ * Adiciona tempo real estudado ao horímetro
+ */
+export function recordStudyTime(
+  secondsToAdd: number,
+  currentStreak: StudyStreakData = DEFAULT_STREAK
+): StudyStreakData {
+  if (secondsToAdd <= 0) return currentStreak;
+  const normalized = normalizeStreakDate(currentStreak);
+  const today = getTodayString();
+
+  return {
+    ...normalized,
+    lastStudyDate: today,
+    todaySecondsStudied: (normalized.todaySecondsStudied || 0) + secondsToAdd,
+    totalSecondsStudied: (normalized.totalSecondsStudied || 0) + secondsToAdd,
+    weeklySecondsStudied: (normalized.weeklySecondsStudied || 0) + secondsToAdd,
+  };
 }
 
 /**

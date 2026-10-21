@@ -26,6 +26,7 @@ interface YouTubePlayerProps {
   playbackRate?: number;
   onEnded: () => void;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
+  onPlaybackStateChange?: (isPlaying: boolean) => void;
   onError?: (error: any) => void;
 }
 
@@ -35,6 +36,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
   playbackRate = 1,
   onEnded,
   onTimeUpdate,
+  onPlaybackStateChange,
   onError,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -205,7 +207,13 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
             }
           },
           onStateChange: (event: any) => {
-            // YT.PlayerState.ENDED is 0
+            // YT.PlayerState: PLAYING = 1, PAUSED = 2, BUFFERING = 3, ENDED = 0
+            if (event.data === 1) {
+              onPlaybackStateChange?.(true);
+            } else if (event.data === 2 || event.data === 0) {
+              onPlaybackStateChange?.(false);
+            }
+
             if (event.data === 0) {
               if (!endedFiredRef.current) {
                 endedFiredRef.current = true;

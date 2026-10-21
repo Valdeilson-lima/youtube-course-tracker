@@ -36,4 +36,5 @@ export interface UserSettings {
   autoMarkCompleted: boolean;
   playbackRate: number;
   youtubeApiKey: string;
+  geminiApiKey?: string;
 }

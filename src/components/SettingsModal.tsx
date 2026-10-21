@@ -10,6 +10,8 @@ import {
   Check,
   ShieldCheck,
   Sliders,
+  Sparkles,
+  ExternalLink,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -174,6 +176,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
             <p className="text-[11px] text-slate-500">
               Não é obrigatória! Usamos importação pública sem chave por padrão. Se possuir uma chave do Google Cloud Console, insira-a para carregar playlists gigantes sem limite.
+            </p>
+          </div>
+
+          {/* Gemini AI API Key (Optional) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                Chave da API do Google Gemini (Resumos com IA)
+              </label>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 hover:underline"
+              >
+                <span>Obter Chave Gratuita</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <input
+              type="password"
+              placeholder="AIzaSy..."
+              value={currentSettings.geminiApiKey || ''}
+              onChange={(e) =>
+                setCurrentSettings({ ...currentSettings, geminiApiKey: e.target.value.trim() })
+              }
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono transition"
+            />
+            <p className="text-[11px] text-slate-500">
+              Opcional. Se não preencher, o sistema gera resumos inteligentes estruturados em modo offline. Ao adicionar sua chave gratuita do Google AI Studio, o modelo Gemini 1.5 Flash sintetiza os pontos-chave de cada aula em tempo real.
             </p>
           </div>
 

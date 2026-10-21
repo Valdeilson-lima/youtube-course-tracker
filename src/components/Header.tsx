@@ -9,11 +9,12 @@ import {
   LayoutGrid,
   Flame,
   LogIn,
+  Clock,
 } from 'lucide-react';
 import { YouTubeIcon } from './YouTubeIcon';
 import { Course } from '../types';
 import { User } from '@supabase/supabase-js';
-import { StudyStreakData } from '../utils/streak';
+import { StudyStreakData, formatHoursAndMinutes } from '../utils/streak';
 
 interface HeaderProps {
   courses: Course[];
@@ -101,19 +102,25 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Buttons (Touch friendly: min 44px on mobile) */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Study Streak Badge */}
+          {/* Study Streak Badge & Horímetro */}
           {streak && onOpenStreakModal && (
             <button
               onClick={onOpenStreakModal}
-              title={`Sequência de estudo: ${streak.currentStreak} dias seguidos. Meta de hoje: ${streak.todayLessonsCompleted}/${streak.dailyGoal} aulas.`}
+              title={`Sequência de estudo: ${streak.currentStreak} dias seguidos. Tempo total: ${formatHoursAndMinutes(streak.totalSecondsStudied || 0)}. Meta de hoje: ${streak.todayLessonsCompleted}/${streak.dailyGoal} aulas.`}
               aria-label="Abrir meta e sequência de estudos"
               className="max-[380px]:hidden flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[40px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10"
             >
               <Flame className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
               <span>{streak.currentStreak}d</span>
-              <span className="hidden sm:inline text-[11px] text-amber-400/80">
-                ({streak.todayLessonsCompleted}/{streak.dailyGoal})
-              </span>
+              {streak.totalSecondsStudied && streak.totalSecondsStudied > 0 ? (
+                <span className="hidden md:inline text-[11px] text-cyan-300 font-mono font-medium border-l border-amber-500/30 pl-1.5">
+                  ⏳ {formatHoursAndMinutes(streak.totalSecondsStudied)}
+                </span>
+              ) : (
+                <span className="hidden sm:inline text-[11px] text-amber-400/80">
+                  ({streak.todayLessonsCompleted}/{streak.dailyGoal})
+                </span>
+              )}
             </button>
           )}
 
