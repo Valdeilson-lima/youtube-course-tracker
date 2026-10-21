@@ -220,7 +220,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [activeTab, setActiveTab] = useState<'notes' | 'info'>('notes');
-  const [mobileTab, setMobileTab] = useState<'video' | 'lessons' | 'notes'>('video');
+  const [mobileTab, setMobileTab] = useState<'lessons' | 'notes' | 'info'>('lessons');
   const [noteText, setNoteText] = useState('');
   const [notesViewMode, setNotesViewMode] = useState<'edit' | 'preview'>('edit');
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(settings.playbackRate || 1);
@@ -269,7 +269,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
         localStorage.setItem('tubecourse_sidebar_open', String(next));
       } catch {}
       if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-        setMobileTab(next ? 'lessons' : 'video');
+        setMobileTab(next ? 'lessons' : 'notes');
       }
       return next;
     });
@@ -301,14 +301,12 @@ export const Classroom: React.FC<ClassroomProps> = ({
   // Jump player to specific timestamp (Clickable Timestamps)
   const handleSeekToTimestamp = (seconds: number) => {
     playerRef.current?.seekTo(seconds);
-    setMobileTab('video');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Switch to a new lesson
   const selectLesson = (lessonId: string) => {
     setActiveLessonId(lessonId);
-    setMobileTab('video');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const currentLatest = courseRef.current;
@@ -466,7 +464,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
 
       setTimeout(() => {
         setActiveLessonId(nextLessonId);
-        setMobileTab('video');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 1200);
     } else {
@@ -795,46 +792,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </div>
       </div>
 
-      {/* Mobile Navigation Segment Tabs */}
-      <div className="lg:hidden flex bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-1.5 gap-2 text-xs font-semibold sticky top-[52px] z-20">
-        <button
-          onClick={() => setMobileTab('video')}
-          aria-label="Ver reprodutor de vídeo"
-          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
-            mobileTab === 'video'
-              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
-          }`}
-        >
-          <Play className="w-3.5 h-3.5 fill-current" />
-          <span>Vídeo</span>
-        </button>
-        <button
-          onClick={() => setMobileTab('lessons')}
-          aria-label={`Ver lista de todas as ${totalLessons} aulas`}
-          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
-            mobileTab === 'lessons'
-              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
-          }`}
-        >
-          <ListVideo className="w-4 h-4" />
-          <span>Aulas ({totalLessons})</span>
-        </button>
-        <button
-          onClick={() => setMobileTab('notes')}
-          aria-label="Ver bloco de anotações da aula"
-          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
-            mobileTab === 'notes'
-              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-              : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Anotações</span>
-        </button>
-      </div>
-
       {/* Lights Off / Cinema Overlay */}
       {isLightsOff && (
         <div
@@ -872,7 +829,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
       <div
         className={`flex-1 min-w-0 w-full transition-all duration-300 ${
           isTheaterMode
-            ? `max-w-[1750px] mx-auto p-2 sm:p-4 lg:p-6 lg:grid ${
+            ? `max-w-[1750px] mx-auto p-2 sm:p-4 lg:p-6 flex flex-col lg:grid ${
                 isLessonsSidebarOpen
                   ? 'lg:grid-cols-[minmax(0,1fr)_384px] xl:grid-cols-[minmax(0,1fr)_420px] lg:gap-6'
                   : 'lg:grid-cols-1 max-w-7xl'
@@ -882,15 +839,15 @@ export const Classroom: React.FC<ClassroomProps> = ({
             : 'flex flex-col p-2 sm:p-6 lg:p-8 max-w-7xl mx-auto'
         }`}
       >
-        {/* 1. Video & Player Controls Stage */}
+        {/* 1. Video & Player Controls Stage (Sempre visível em todos os tamanhos de tela) */}
         <div
-          className={`min-w-0 transition-all duration-300 ${
+          className={`min-w-0 transition-all duration-300 flex flex-col ${
             isTheaterMode
-              ? 'lg:col-span-full lg:row-start-1 w-full flex flex-col gap-3 sm:gap-4'
+              ? 'lg:col-span-full lg:row-start-1 w-full gap-3 sm:gap-4'
               : isLessonsSidebarOpen
-              ? 'lg:col-start-1 lg:col-end-2 lg:row-start-1 p-2 sm:p-6 lg:px-8 lg:pt-8 lg:pb-3 flex flex-col gap-3 sm:gap-6'
-              : 'w-full flex flex-col gap-3 sm:gap-6'
-          } ${mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'} ${
+              ? 'lg:col-start-1 lg:col-end-2 lg:row-start-1 p-2 sm:p-6 lg:px-8 lg:pt-8 lg:pb-3 gap-3 sm:gap-6'
+              : 'w-full gap-3 sm:gap-6'
+          } ${
             isLightsOff ? 'relative z-[60]' : ''
           }`}
         >
@@ -1188,7 +1145,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
           }`}
         >
           {/* Current Lesson Title */}
-          <div className={`px-1 sm:px-0 ${mobileTab !== 'video' ? 'hidden lg:block' : 'block'}`}>
+          <div className="px-1 sm:px-0 block">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-2 text-[11px] sm:text-xs text-red-400 font-semibold">
                 <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
@@ -1227,9 +1184,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
           {nextLesson && (
             <div
               onClick={() => selectLesson(nextLesson.id)}
-              className={`p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700 active:scale-[0.99] transition ${
-                mobileTab !== 'video' ? 'hidden' : 'block sm:hidden'
-              }`}
+              className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700 active:scale-[0.99] transition block sm:hidden"
             >
               <div className="min-w-0">
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">A Seguir</p>
@@ -1238,6 +1193,49 @@ export const Classroom: React.FC<ClassroomProps> = ({
               <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
             </div>
           )}
+
+          {/* Mobile Navigation Segment Tabs (Vídeo permanece sempre fixo no topo; estas abas alternam a seção inferior) */}
+          <div className="lg:hidden flex bg-slate-900/95 backdrop-blur-md border border-slate-800 p-1.5 rounded-2xl gap-1.5 text-xs font-semibold sticky top-[52px] z-20 shadow-xl">
+            <button
+              onClick={() => {
+                setIsLessonsSidebarOpen(true);
+                setMobileTab('lessons');
+              }}
+              aria-label={`Ver lista de todas as ${totalLessons} aulas`}
+              className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
+                mobileTab === 'lessons'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
+              }`}
+            >
+              <ListVideo className="w-4 h-4" />
+              <span>Aulas ({totalLessons})</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('notes')}
+              aria-label="Ver bloco de anotações da aula"
+              className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
+                mobileTab === 'notes'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Anotações</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('info')}
+              aria-label="Ver informações do curso"
+              className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition min-h-[44px] active:scale-[0.98] ${
+                mobileTab === 'info'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 bg-slate-950/40'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Sobre</span>
+            </button>
+          </div>
 
           {/* Notes and Info on Desktop */}
           <div className="hidden lg:block bg-slate-900/90 rounded-2xl border border-slate-800 p-5 space-y-4">
@@ -1436,14 +1434,45 @@ export const Classroom: React.FC<ClassroomProps> = ({
               />
             </div>
           </div>
+
+          {/* Mobile Info Tab View */}
+          <div
+            className={`${
+              mobileTab === 'info' ? 'block lg:hidden' : 'hidden'
+            }`}
+          >
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
+              <h3 className="font-bold text-xs sm:text-sm text-white flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-red-500" />
+                <span>Sobre o Curso</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {course.description || 'Sem descrição cadastrada para este curso.'}
+              </p>
+              <div className="pt-2 border-t border-slate-800 text-xs text-slate-400 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span>Canal:</span>
+                  <span className="font-semibold text-slate-200">{course.channelTitle}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Total de aulas:</span>
+                  <span className="font-semibold text-slate-200">{totalLessons} aulas ({timeStats.totalFormatted})</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Progresso:</span>
+                  <span className="font-semibold text-emerald-400">{completedLessons} concluídas ({progressPercent}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* 3. Lessons Sidebar */}
+        {/* 3. Lessons Sidebar (Na tela menor, abre logo abaixo das abas e do vídeo sem ocultar o reprodutor) */}
         <div
           className={`w-full transition-all duration-300 ${
             isTheaterMode
               ? 'lg:col-start-2 lg:col-end-3 lg:row-start-2 rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden flex flex-col h-[750px] lg:sticky lg:top-20'
-              : 'lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16'
+              : 'lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 bg-slate-900 rounded-2xl lg:rounded-none border border-slate-800 lg:border-t-0 lg:border-l flex flex-col max-h-[75vh] lg:max-h-none lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-hidden'
           } ${
             !isLessonsSidebarOpen
               ? 'hidden'
