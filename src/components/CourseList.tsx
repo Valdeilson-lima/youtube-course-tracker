@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Course } from '../types';
 import { useToast } from '../context/ToastContext';
 import { calculateCourseTimeStats } from '../utils/duration';
+import { User } from '@supabase/supabase-js';
 import {
   Play,
   CheckCircle2,
@@ -14,16 +15,19 @@ import {
   Edit2,
   Search,
   RefreshCw,
+  Lock,
+  LogIn,
 } from 'lucide-react';
 
 interface CourseListProps {
   courses: Course[];
+  user: User | null;
   onSelectCourse: (course: Course) => void;
   onDeleteCourse: (courseId: string) => void;
   onResetCourseProgress: (courseId: string) => void;
   onUpdateCourseCategory: (courseId: string, newCategory: string) => void;
   onOpenAddModal: () => void;
-  onLoadDemoCourses: () => void;
+  onOpenAuthModal?: () => void;
   onSyncCoursePlaylist?: (course: Course) => Promise<void> | void;
 }
 
@@ -68,12 +72,13 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
 
 export const CourseList: React.FC<CourseListProps> = ({
   courses,
+  user,
   onSelectCourse,
   onDeleteCourse,
   onResetCourseProgress,
   onUpdateCourseCategory,
   onOpenAddModal,
-  onLoadDemoCourses,
+  onOpenAuthModal,
   onSyncCoursePlaylist,
 }) => {
 
@@ -121,49 +126,90 @@ export const CourseList: React.FC<CourseListProps> = ({
 
   if (courses.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <div className="w-20 h-20 mx-auto rounded-3xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-red-500 mb-6 shadow-xl shadow-red-500/5">
-          <BookOpen className="w-10 h-10" />
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">
-          Nenhum curso cadastrado ainda
-        </h2>
-        <p className="text-slate-400 max-w-md mx-auto mb-8 text-sm sm:text-base">
-          Transforme qualquer playlist do YouTube em uma trilha de aprendizado estruturada com progresso e marcação automática.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button
-            onClick={onOpenAddModal}
-            className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95"
-          >
-            Adicionar Minha Primeira Playlist
-          </button>
-          <button
-            onClick={onLoadDemoCourses}
-            className="w-full sm:w-auto px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            Carregar Cursos de Demonstração
-          </button>
+      <div className="max-w-4xl mx-auto px-4 py-14 sm:py-24">
+        <div className="study-hero relative overflow-hidden rounded-[2rem] border border-sky-300/15 px-6 py-12 sm:px-14 sm:py-16 text-center">
+          <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-cyan-300/10 blur-3xl" />
+          <div className="relative">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-300/10 border border-cyan-200/20 flex items-center justify-center text-cyan-200 mb-6">
+              {user ? <BookOpen className="w-8 h-8" /> : <Lock className="w-8 h-8 text-cyan-300" />}
+            </div>
+            <p className="study-kicker text-sm font-semibold mb-3">
+              {user ? 'Seu espaço de estudo' : 'Acesso Exclusivo para Alunos'}
+            </p>
+            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-4">
+              {user
+                ? 'Comece pelo curso que você quer terminar.'
+                : 'Estude no YouTube com foco e progresso na nuvem.'}
+            </h2>
+            <p className="text-slate-300 max-w-lg mx-auto mb-8 text-sm sm:text-base leading-7">
+              {user
+                ? 'Adicione uma playlist pública do YouTube e transforme vídeos soltos em uma trilha com progresso, notas e ritmo.'
+                : 'Faça login ou crie sua conta para cadastrar playlists, marcar seu progresso aula por aula e sincronizar suas anotações em qualquer dispositivo.'}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {user ? (
+                <button
+                  onClick={onOpenAddModal}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-cyan-300 hover:bg-cyan-200 text-slate-950 font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition active:scale-95"
+                >
+                  Adicionar primeira playlist
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAuthModal || onOpenAddModal}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-cyan-300 to-sky-400 hover:from-cyan-200 hover:to-sky-300 text-slate-950 font-bold rounded-xl shadow-lg shadow-sky-500/20 transition active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-5 h-5" />
+                  <span>Entrar ou Criar Conta</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-5 sm:space-y-8">
+      {/* Guest Mode Notice */}
+      {!user && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-sky-950/40 border border-sky-400/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-400/10 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Modo Visitante — Acesso Restrito</p>
+              <p className="text-xs text-slate-300">
+                Para assistir às aulas, marcar progresso e fazer alterações nos cursos, entre na sua conta ou crie uma gratuitamente.
+              </p>
+            </div>
+          </div>
+          {onOpenAuthModal && (
+            <button
+              onClick={onOpenAuthModal}
+              className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-300 to-sky-400 hover:from-cyan-200 hover:to-sky-300 text-slate-950 font-bold text-xs rounded-xl transition shadow active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Entrar / Criar Conta</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 p-4 sm:p-10 shadow-2xl">
+      <div className="study-hero relative overflow-hidden rounded-2xl sm:rounded-3xl border border-sky-300/15 p-4 sm:p-10">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] sm:text-xs font-semibold mb-2 sm:mb-4">
+          <div className="study-kicker inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold mb-2 sm:mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             Sua Sala de Estudos Pessoal
           </div>
-          <h1 className="text-xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug sm:leading-tight">
-            Continue seus estudos com foco total
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight sm:leading-tight">
+            Um pouco mais perto de terminar.
           </h1>
           <p className="text-slate-400 text-xs sm:text-base mt-1.5 sm:mt-2">
-            Organize suas playlists por tecnologia (Inteligência Artificial, Python, JavaScript, PHP) com progresso contínuo e anotações.
+            Escolha uma trilha e retome de onde parou. Seu progresso fica no centro.
           </p>
         </div>
         <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 opacity-10 pointer-events-none hidden lg:block">
@@ -172,7 +218,7 @@ export const CourseList: React.FC<CourseListProps> = ({
       </div>
 
       {/* Categories & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
         {/* Category Tabs */}
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
           {categories.map((cat) => {
@@ -293,7 +339,7 @@ export const CourseList: React.FC<CourseListProps> = ({
               </div>
 
               {/* Course Info */}
-              <div className="p-5 flex-1 flex flex-col justify-between">
+              <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
                     <span className="font-medium line-clamp-1">
@@ -334,17 +380,30 @@ export const CourseList: React.FC<CourseListProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       onClick={() => onSelectCourse(course)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800 hover:bg-red-600 text-white font-medium text-sm rounded-xl transition group/btn active:scale-95 border border-slate-700 hover:border-red-500"
+                      className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 px-2 sm:px-4 text-xs sm:text-sm rounded-xl transition group/btn active:scale-95 border ${
+                        user
+                          ? 'bg-slate-800 hover:bg-cyan-400 text-white hover:text-slate-950 border-slate-700 hover:border-cyan-300 font-medium'
+                          : 'bg-sky-950/40 hover:bg-sky-900/60 text-sky-300 border-sky-400/30 hover:border-sky-300 font-semibold'
+                      }`}
                     >
-                      <Play className="w-4 h-4 fill-current transition group-hover/btn:scale-110" />
-                      <span>
-                        {completedCount === 0
-                          ? 'Começar Aula 1'
-                          : `Continuar Aula ${nextLessonNum}`}
-                      </span>
+                      {user ? (
+                        <>
+                          <Play className="w-4 h-4 fill-current transition group-hover/btn:scale-110" />
+                          <span className="truncate">
+                            {completedCount === 0
+                              ? 'Começar Aula 1'
+                              : `Continuar Aula ${nextLessonNum}`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5" />
+                          <span className="truncate">Entrar para Assistir</span>
+                        </>
+                      )}
                     </button>
 
                     {course.playlistId && onSyncCoursePlaylist && (

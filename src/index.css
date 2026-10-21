@@ -9,7 +9,44 @@
     overflow-x: hidden;
     max-width: 100vw;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: #08111f;
+    color: #e5eef8;
+  }
+
+  h1, h2, h3, h4, button {
+    font-family: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  button, a, input {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .study-shell {
+    background:
+      radial-gradient(circle at 82% 6%, rgba(14, 165, 233, 0.12), transparent 24rem),
+      linear-gradient(180deg, #08111f 0%, #0b1422 48%, #09111d 100%);
+  }
+
+  .study-hero {
+    background:
+      linear-gradient(116deg, rgba(7, 21, 37, 0.98) 0%, rgba(10, 34, 54, 0.94) 58%, rgba(8, 17, 31, 0.96) 100%);
+    box-shadow: 0 24px 70px rgba(2, 8, 23, 0.34);
+  }
+
+  .study-kicker {
+    color: #8bd8ff;
+    letter-spacing: 0.01em;
+  }
+
+  .progress-track {
+    background: rgba(148, 163, 184, 0.16);
+  }
+
+  .progress-fill {
+    background: linear-gradient(90deg, #22d3ee, #38bdf8);
   }
 }
 

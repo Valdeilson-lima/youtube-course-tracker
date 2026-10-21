@@ -41,27 +41,6 @@ const POPULAR_CATEGORIES = [
   'Finanças & Negócios',
 ];
 
-const SAMPLE_PLAYLISTS = [
-  {
-    title: 'Curso de Inteligência Artificial - IA',
-    channel: 'Curso em Vídeo',
-    category: 'Inteligência Artificial',
-    url: 'https://www.youtube.com/watch?v=jQMbuK6URws&list=PLHz_AreHm4dm24MhlWJYiR_Rm7TFtvs6S',
-  },
-  {
-    title: 'Curso de Python 3 - Mundo 1: Fundamentos',
-    channel: 'Curso em Vídeo',
-    category: 'Python',
-    url: 'https://www.youtube.com/playlist?list=PLHz_AreHm4dlKP6QQCekuIPky1CiwmdI6',
-  },
-  {
-    title: 'HTML5 e CSS3 Moderno Completo',
-    channel: 'Gustavo Guanabara',
-    category: 'HTML & CSS',
-    url: 'https://www.youtube.com/playlist?list=PLHz_AreHm4dkZ9-atkcmcBaMZdmLHft8n',
-  },
-];
-
 function detectCategoryFromText(text: string): string | null {
   const lower = text.toLowerCase();
   if (
@@ -203,14 +182,6 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
     }
   };
 
-  const handlePickSample = (sample: typeof SAMPLE_PLAYLISTS[0]) => {
-    setPlaylistUrl(sample.url);
-    setCustomTitle(sample.title);
-    setCategory(sample.category);
-    setIsAddingCustomCategory(false);
-    setTab('url');
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
@@ -262,7 +233,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
         </div>
 
         {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs sm:text-sm">
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
@@ -365,40 +336,8 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
             )}
           </div>
 
-          {/* Quick Sample Links */}
-          {tab === 'url' && (
-            <div className="pt-2">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                Exemplos de playlists para testar:
-              </span>
-              <div className="space-y-1.5">
-                {SAMPLE_PLAYLISTS.map((sample, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handlePickSample(sample)}
-                    className="w-full text-left p-2 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 font-medium">
-                        {sample.category}
-                      </span>
-                      <span className="font-medium group-hover:text-red-400 transition truncate">
-                        {sample.title}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 shrink-0 ml-2">
-                      {sample.channel}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
@@ -410,7 +349,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-600/25 transition active:scale-95"
             >
               {isLoading ? (
                 <>

@@ -127,7 +127,7 @@ export async function fetchPlaylistViaRssFallback(
   let lastError: any = null;
   for (const proxyUrl of proxies) {
     try {
-      const res = await fetch(proxyUrl);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) continue;
 
       const xmlText = await res.text();

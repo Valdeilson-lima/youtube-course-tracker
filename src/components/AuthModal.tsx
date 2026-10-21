@@ -118,7 +118,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro durante a autenticação.');
+      const rawMsg = String(err?.message || '');
+      const lower = rawMsg.toLowerCase();
+
+      if (lower.includes('rate limit')) {
+        setErrorMsg(
+          'Limite de envio de e-mails do Supabase atingido (máx. 3-4 por hora no plano gratuito). Solução: Desative a opção "Confirm email" no painel do Supabase (Authentication > Providers > Email) para cadastrar sem restrições.'
+        );
+      } else if (lower.includes('already registered')) {
+        setErrorMsg('Este e-mail já possui uma conta cadastrada. Alterne para a aba "Entrar" acima para fazer login.');
+      } else if (lower.includes('invalid login credentials')) {
+        setErrorMsg('E-mail ou senha incorretos. Verifique suas credenciais.');
+      } else if (lower.includes('at least 6 characters')) {
+        setErrorMsg('A senha precisa ter no mínimo 6 caracteres.');
+      } else {
+        setErrorMsg(err.message || 'Erro durante a autenticação.');
+      }
     } finally {
       setIsLoading(false);
     }

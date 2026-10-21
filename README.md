@@ -25,7 +25,7 @@ Uma aplicação moderna para estudar através do YouTube como se fosse uma plata
 4. **Importação Fácil de Playlists:**
    - Cole o link de qualquer playlist pública do YouTube.
    - Ou cole uma lista manual de vídeos (`URL | Título da Aula`).
-   - Cursos de demonstração inclusos para testar de imediato.
+   - O painel começa vazio para você cadastrar apenas os seus cursos.
 
 5. **Backup & Armazenamento Local:**
    - 100% dos dados salvos no seu próprio navegador via `localStorage`.

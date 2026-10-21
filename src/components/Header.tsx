@@ -8,6 +8,7 @@ import {
   RefreshCw,
   LayoutGrid,
   Flame,
+  LogIn,
 } from 'lucide-react';
 import { YouTubeIcon } from './YouTubeIcon';
 import { Course } from '../types';
@@ -51,8 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
     totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 bg-[#08111f]/90 backdrop-blur-xl border-b border-sky-400/10 transition-colors">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 min-h-14 sm:h-16 py-1.5 sm:py-0 flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Brand */}
         <div
           className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none shrink-0 group"
@@ -62,16 +63,16 @@ export const Header: React.FC<HeaderProps> = ({
           onKeyDown={(e) => e.key === 'Enter' && onBackToDashboard()}
           aria-label="Ir para página inicial do TubeCourse"
         >
-          <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 text-white shadow-md shadow-red-500/20 shrink-0 group-hover:scale-105 transition-transform duration-200">
+          <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-cyan-300 text-slate-950 shadow-md shadow-sky-500/20 shrink-0 group-hover:scale-105 transition-transform duration-200">
             <YouTubeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-amber-300 absolute -top-1 -right-1 stroke-[2.5]" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm sm:text-lg tracking-tight text-white group-hover:text-red-400 transition-colors">
+              <span className="font-extrabold text-sm sm:text-lg tracking-tight text-white group-hover:text-sky-300 transition-colors">
                 TubeCourse
               </span>
-              <span className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="hidden min-[360px]:inline text-[8px] sm:text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-sky-400/10 text-sky-300 border border-sky-400/20">
                 PRO
               </span>
             </div>
@@ -84,14 +85,14 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Center: Global Progress if multiple courses (Desktop only) */}
         {courses.length > 0 && !currentCourse && (
           <div className="hidden lg:flex items-center gap-3 px-4 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-xs">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-cyan-300" />
             <span className="text-slate-300">
               Progresso Geral: <strong className="text-white">{totalCompleted}</strong> de{' '}
               <strong className="text-white">{totalLessons}</strong> aulas ({overallPercentage}%)
             </span>
-            <div className="w-20 bg-slate-700 h-1.5 rounded-full overflow-hidden">
+            <div className="w-20 progress-track h-1.5 rounded-full overflow-hidden">
               <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+              className="progress-fill h-full rounded-full transition-all duration-500"
                 style={{ width: `${overallPercentage}%` }}
               />
             </div>
@@ -99,14 +100,14 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Action Buttons (Touch friendly: min 44px on mobile) */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Study Streak Badge */}
           {streak && onOpenStreakModal && (
             <button
               onClick={onOpenStreakModal}
               title={`Sequência de estudo: ${streak.currentStreak} dias seguidos. Meta de hoje: ${streak.todayLessonsCompleted}/${streak.dailyGoal} aulas.`}
               aria-label="Abrir meta e sequência de estudos"
-              className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[40px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10"
+              className="max-[380px]:hidden flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 sm:py-1.5 text-xs font-bold rounded-xl border border-amber-500/40 bg-amber-950/50 hover:bg-amber-900/60 text-amber-300 transition min-h-[40px] sm:min-h-[38px] active:scale-95 shadow-sm shadow-amber-500/10"
             >
               <Flame className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
               <span>{streak.currentStreak}d</span>
@@ -116,35 +117,38 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Cloud Sync Button */}
+          {/* Cloud Sync / Auth Button */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={onOpenAuthModal}
               title={
                 user
                   ? `Conectado como ${user.email} (Clique para gerenciar)`
-                  : 'Conectar ao Supabase'
+                  : 'Fazer Login ou Criar Conta'
               }
-              aria-label="Sincronização na nuvem"
-              className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-xl border transition min-h-[40px] sm:min-h-[38px] active:scale-95 ${
+              aria-label="Autenticação e sincronização na nuvem"
+              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-xl border transition min-h-[40px] sm:min-h-[38px] active:scale-95 ${
                 user
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
-                  : 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:text-white hover:bg-slate-800'
+                  : 'bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-slate-950 border-cyan-300 font-bold shadow-md shadow-sky-500/20'
               }`}
             >
-              <div className="relative flex items-center">
-                <Cloud
-                  className={`w-4 h-4 ${
-                    user ? 'text-emerald-400 fill-emerald-400/20' : 'text-slate-400'
-                  }`}
-                />
-                {user && (
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-              </div>
-              <span className="hidden md:inline">
-                {user ? user.email?.split('@')[0] : 'Nuvem'}
-              </span>
+              {user ? (
+                <>
+                  <div className="relative flex items-center">
+                    <Cloud className="w-4 h-4 text-emerald-400 fill-emerald-400/20" />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <span className="hidden md:inline">
+                    {user.email?.split('@')[0]}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>Entrar</span>
+                </>
+              )}
             </button>
 
             {user && onManualSync && (
@@ -178,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenAddModal}
             aria-label="Adicionar nova playlist"
-            className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 rounded-xl transition shadow-md shadow-red-600/20 active:scale-95 min-h-[40px]"
+            className="flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-300 to-sky-400 hover:from-cyan-200 hover:to-sky-300 rounded-xl transition shadow-md shadow-sky-500/20 active:scale-95 min-h-[40px]"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Adicionar Playlist</span>

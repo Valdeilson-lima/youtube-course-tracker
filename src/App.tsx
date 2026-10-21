@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Course, UserSettings } from './types';
 import {
-  INITIAL_DEMO_COURSES,
+  loadCourses,
+  saveCourses,
+  loadSettings,
+  saveSettings,
   DEFAULT_SETTINGS,
 } from './utils/storage';
 import {
   getSupabaseClient,
-  syncCoursesFromCloud,
+  syncAllCoursesWithCloud,
   saveCourseToCloud,
   deleteCourseFromCloud,
-  updateLessonProgressInCloud,
   saveUserSettingsToCloud,
   loadUserSettingsFromCloud,
   saveUserStreakToCloud,
   loadUserStreakFromCloud,
 } from './services/supabase';
-import { Lesson } from './types';
 import { User } from '@supabase/supabase-js';
 import { Header } from './components/Header';
 import { CourseList } from './components/CourseList';
@@ -25,27 +26,52 @@ import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
 import { OfflineBanner } from './components/OfflineBanner';
 import { StreakModal } from './components/StreakModal';
-import { calculateNextStreak, DEFAULT_STREAK, StudyStreakData } from './utils/streak';
+import { DEFAULT_STREAK, StudyStreakData } from './utils/streak';
 import { syncCoursePlaylist } from './services/youtube';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { Smartphone, Database, AlertCircle, RefreshCw } from 'lucide-react';
+import { Smartphone, AlertCircle, Database, RefreshCw } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const toast = useToast();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [streak, setStreak] = useState<StudyStreakData>(DEFAULT_STREAK);
+  const [courses, setCourses] = useState<Course[]>(() => loadCourses());
+  const [settings, setSettings] = useState<UserSettings>(() => loadSettings());
+  const [streak, setStreak] = useState<StudyStreakData>(() => DEFAULT_STREAK);
   const [currentCourseId, setCurrentCourseId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isLoadingCloud, setIsLoadingCloud] = useState(true);
+  const coursesRef = useRef(courses);
 
   // Supabase Auth state
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    coursesRef.current = courses;
+  }, [courses]);
+
+  // Se o usuário deslogar enquanto estiver dentro de uma sala de aula, volta ao dashboard
+  useEffect(() => {
+    if (!user && currentCourseId) {
+      setCurrentCourseId(null);
+    }
+  }, [user, currentCourseId]);
+
+  // Helper para exigir login antes de qualquer ação
+  const requireAuth = (action: () => void, promptMessage?: string): boolean => {
+    if (!user) {
+      if (promptMessage) {
+        toast.info('Login Necessário', promptMessage);
+      }
+      setIsAuthModalOpen(true);
+      return false;
+    }
+    action();
+    return true;
+  };
 
   // Listen to PWA install prompt
   useEffect(() => {
@@ -58,74 +84,64 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  // Carrega todos os dados do usuário direto do Banco de Dados Supabase
-  const loadUserDataFromDatabase = async (activeUser: User, showToast = false) => {
+  // Sync handler with cloud
+  const handleCloudSync = async (activeUser: User, showToast = false) => {
     setIsSyncing(true);
     try {
-      // 1. Carrega configurações e streak do usuário na nuvem
+      // Carrega settings e streak da nuvem
       const cloudSettings = loadUserSettingsFromCloud(activeUser, DEFAULT_SETTINGS);
       const cloudStreak = loadUserStreakFromCloud(activeUser, DEFAULT_STREAK);
       setSettings(cloudSettings);
       setStreak(cloudStreak);
 
-      // 2. Carrega cursos do banco de dados
-      const cloudCourses = await syncCoursesFromCloud(activeUser.id);
-      if (cloudCourses && cloudCourses.length > 0) {
-        setCourses(cloudCourses);
-      } else {
-        // Primeiro acesso: inicializa os cursos de demonstração gravando direto no banco
-        for (const demo of INITIAL_DEMO_COURSES) {
-          await saveCourseToCloud(demo, activeUser.id).catch(console.error);
-        }
-        setCourses(INITIAL_DEMO_COURSES);
+      const mergedCourses = await syncAllCoursesWithCloud(coursesRef.current, activeUser.id);
+      if (Array.isArray(mergedCourses)) {
+        setCourses(mergedCourses);
+        saveCourses(mergedCourses);
       }
-
       if (showToast) {
-        toast.success('Banco de Dados Conectado!', 'Seus cursos estão 100% atualizados na nuvem.');
+        toast.success('Sincronizado!', 'Seus cursos estão 100% atualizados na nuvem.');
       }
     } catch (err: any) {
-      console.error('Falha ao sincronizar com banco de dados:', err);
+      console.error('Falha na sincronização:', err);
       if (showToast) {
-        toast.error('Erro de Conexão', 'Não foi possível carregar os cursos do banco de dados.');
+        const message = err instanceof Error ? err.message : 'Verifique sua conexão ou tente novamente.';
+        toast.error('Erro na sincronização', message);
       }
     } finally {
       setIsSyncing(false);
-      setIsLoadingCloud(false);
     }
   };
 
-  // Gerencia o ciclo de autenticação do Supabase
+  // Listen to Supabase Auth changes
   useEffect(() => {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      setIsLoadingCloud(false);
+      setIsAuthChecking(false);
       return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const sessionUser = session?.user ?? null;
-      setUser(sessionUser);
-      if (sessionUser) {
-        loadUserDataFromDatabase(sessionUser, false);
-      } else {
-        setIsLoadingCloud(false);
-        // Abre o modal para incentivar login imediato para persistência no banco
-        setIsAuthModalOpen(true);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        handleCloudSync(session.user);
       }
+      setIsAuthChecking(false);
+    }).catch(() => {
+      setIsAuthChecking(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sessionUser = session?.user ?? null;
-      setUser(sessionUser);
-      if (sessionUser) {
-        loadUserDataFromDatabase(sessionUser, true);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        handleCloudSync(session.user, true);
       } else {
         setCourses([]);
-        setIsLoadingCloud(false);
         setIsAuthModalOpen(true);
       }
+      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -136,7 +152,17 @@ const AppContent: React.FC = () => {
 
   // Handlers
   const handleSelectCourse = (course: Course) => {
-    setCurrentCourseId(course.id);
+    requireAuth(
+      () => setCurrentCourseId(course.id),
+      'Faça login para acessar suas aulas e acompanhar seu progresso no banco de dados.'
+    );
+  };
+
+  const handleOpenAddModal = () => {
+    requireAuth(
+      () => setIsAddModalOpen(true),
+      'Faça login para importar novas playlists e salvá-las na sua conta.'
+    );
   };
 
   const handleBackToDashboard = () => {
@@ -151,71 +177,23 @@ const AppContent: React.FC = () => {
     // Salva direto no Supabase
     if (user) {
       saveCourseToCloud(updatedCourse, user.id).catch((err) =>
-        console.error('Falha ao atualizar curso no banco:', err)
-      );
-    }
-  };
-
-  const handleUpdateLessonProgress = (
-    courseId: string,
-    lessonId: string,
-    partialProgress: Partial<Lesson>
-  ) => {
-    let latestCourseLessons: Lesson[] = [];
-
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id !== courseId) return c;
-        const updatedLessons = c.lessons.map((l) =>
-          l.id === lessonId ? { ...l, ...partialProgress } : l
-        );
-        latestCourseLessons = updatedLessons;
-        return {
-          ...c,
-          lessons: updatedLessons,
-          lastAccessedAt: new Date().toISOString(),
-        };
-      })
-    );
-
-    // Atualiza sequência de estudos (streak) no banco de dados se aula foi marcada como concluída
-    if (partialProgress.completed) {
-      setStreak((prev) => {
-        const next = calculateNextStreak(prev);
-        if (user) {
-          saveUserStreakToCloud(user.id, next);
-        }
-        return next;
-      });
-    }
-
-    // Grava atomicamente no banco de dados Supabase
-    if (user) {
-      updateLessonProgressInCloud(
-        user.id,
-        courseId,
-        lessonId,
-        {
-          completed: partialProgress.completed,
-          completedAt: partialProgress.completedAt,
-          lastPositionSeconds: partialProgress.lastPositionSeconds,
-          notes: partialProgress.notes,
-        },
-        latestCourseLessons
-      ).catch((err) =>
-        console.error('Falha ao salvar progresso da aula no banco:', err)
+        console.error('Falha ao atualizar curso na nuvem:', err)
       );
     }
   };
 
   const handleUpdateCourseCategory = (courseId: string, newCategory: string) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para alterar categorias.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id === courseId) {
           const updated = { ...c, category: newCategory };
-          if (user) {
-            saveCourseToCloud(updated, user.id).catch(console.error);
-          }
+          saveCourseToCloud(updated, user.id).catch(console.error);
           return updated;
         }
         return c;
@@ -224,17 +202,26 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteCourse = (courseId: string) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para excluir cursos.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) => prev.filter((c) => c.id !== courseId));
     if (currentCourseId === courseId) {
       setCurrentCourseId(null);
     }
-
-    if (user) {
-      deleteCourseFromCloud(courseId, user.id).catch(console.error);
-    }
+    deleteCourseFromCloud(courseId, user.id).catch(console.error);
   };
 
   const handleResetCourseProgress = (courseId: string) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para reiniciar progresso.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id === courseId) {
@@ -247,9 +234,7 @@ const AppContent: React.FC = () => {
               lastPositionSeconds: 0,
             })),
           };
-          if (user) {
-            saveCourseToCloud(updated, user.id).catch(console.error);
-          }
+          saveCourseToCloud(updated, user.id).catch(console.error);
           return updated;
         }
         return c;
@@ -258,42 +243,48 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddCourse = (newCourse: Course) => {
+    if (!user) {
+      toast.error('Erro de Autenticação', 'Você precisa estar logado para salvar cursos.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setCourses((prev) => [newCourse, ...prev]);
     setCurrentCourseId(newCourse.id);
     toast.success('Curso Adicionado!', `"${newCourse.title}" foi importado com sucesso.`);
 
-    if (user) {
-      saveCourseToCloud(newCourse, user.id)
-        .then(() => toast.info('Salvo no Banco', 'Curso gravado com sucesso no Supabase.'))
-        .catch((err) => console.error('Falha ao salvar no banco:', err));
-    }
-  };
-
-  const handleLoadDemoCourses = () => {
-    setCourses(INITIAL_DEMO_COURSES);
-    toast.success('Cursos Restaurados', 'Cursos de demonstração recarregados.');
-    if (user) {
-      INITIAL_DEMO_COURSES.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
-    }
+    saveCourseToCloud(newCourse, user.id)
+      .then(() => toast.info('Salvo na Nuvem', 'Curso gravado com sucesso no Supabase.'))
+      .catch((err) => console.error('Falha ao salvar na nuvem:', err));
   };
 
   const handleResetAllData = () => {
-    setCourses(INITIAL_DEMO_COURSES);
-    setSettings(DEFAULT_SETTINGS);
-    setCurrentCourseId(null);
-    if (user) {
-      saveUserSettingsToCloud(user.id, DEFAULT_SETTINGS);
-      INITIAL_DEMO_COURSES.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para gerenciar dados.');
+      setIsAuthModalOpen(true);
+      return;
     }
+
+    setCourses([]);
+    setSettings(DEFAULT_SETTINGS);
+    saveCourses([]);
+    saveSettings(DEFAULT_SETTINGS);
+    setCurrentCourseId(null);
+    saveUserSettingsToCloud(user.id, DEFAULT_SETTINGS);
     toast.info('Dados Restaurados', 'As configurações e cursos voltaram aos padrões.');
   };
 
   const handleImportCourses = (imported: Course[]) => {
-    setCourses(imported);
-    toast.success('Backup Importado', `${imported.length} cursos foram importados.`);
-    if (user) {
-      imported.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para importar cursos.');
+      setIsAuthModalOpen(true);
+      return;
     }
+
+    setCourses(imported);
+    saveCourses(imported);
+    toast.success('Backup Restaurado', `${imported.length} cursos foram importados.`);
+    imported.forEach((c) => saveCourseToCloud(c, user.id).catch(console.error));
   };
 
   const handleSaveSettings = (newSettings: UserSettings) => {
@@ -321,6 +312,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleSyncCoursePlaylist = async (course: Course) => {
+    if (!user) {
+      toast.warning('Acesso Restrito', 'Faça login para buscar novidades na playlist.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       toast.info('Sincronizando Playlist', `Buscando novidades para "${course.title}"...`);
       const { updatedCourse, addedCount } = await syncCoursePlaylist(course, settings.youtubeApiKey);
@@ -335,8 +332,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Tela de carregamento elegante enquanto conecta ao banco de dados
-  if (isLoadingCloud) {
+  if (isAuthChecking) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 animate-pulse">
@@ -345,15 +341,15 @@ const AppContent: React.FC = () => {
         <h2 className="text-lg font-bold text-white mb-1">TubeCourse Cloud</h2>
         <p className="text-xs text-slate-400 flex items-center gap-2">
           <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-          Conectando e carregando dados do banco...
+          Conectando ao banco de dados...
         </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      <OfflineBanner onReconnected={() => user && loadUserDataFromDatabase(user, false)} />
+    <div className="study-shell min-h-screen text-slate-100 flex flex-col font-sans">
+      <OfflineBanner onReconnected={() => user && handleCloudSync(user, false)} />
 
       {/* Banner de Aviso quando o usuário NÃO está conectado */}
       {!user && (
@@ -364,7 +360,7 @@ const AppContent: React.FC = () => {
           <div className="flex items-center gap-2 min-w-0">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
             <span className="truncate">
-              <strong>Modo Desconectado:</strong> Conecte sua conta para salvar o progresso no banco de dados e sincronizar entre casa e trabalho.
+              <strong>Modo Desconectado:</strong> Faça login para que seu progresso fique salvo no banco de dados e sincronizado entre casa e trabalho.
             </span>
           </div>
           <button
@@ -383,11 +379,11 @@ const AppContent: React.FC = () => {
         isSyncing={isSyncing}
         streak={streak}
         onBackToDashboard={handleBackToDashboard}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
+        onOpenAddModal={handleOpenAddModal}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenStreakModal={() => setIsStreakModalOpen(true)}
-        onManualSync={user ? () => loadUserDataFromDatabase(user, true) : undefined}
+        onManualSync={user ? () => handleCloudSync(user, true) : undefined}
       />
 
       {/* PWA Install Notice on mobile */}
@@ -414,17 +410,17 @@ const AppContent: React.FC = () => {
             settings={settings}
             onBack={handleBackToDashboard}
             onUpdateCourse={handleUpdateCourse}
-            onUpdateLessonProgress={handleUpdateLessonProgress}
           />
         ) : (
           <CourseList
             courses={courses}
+            user={user}
             onSelectCourse={handleSelectCourse}
             onDeleteCourse={handleDeleteCourse}
             onResetCourseProgress={handleResetCourseProgress}
             onUpdateCourseCategory={handleUpdateCourseCategory}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onLoadDemoCourses={handleLoadDemoCourses}
+            onOpenAddModal={handleOpenAddModal}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
             onSyncCoursePlaylist={handleSyncCoursePlaylist}
           />
         )}
@@ -454,7 +450,7 @@ const AppContent: React.FC = () => {
         onAuthSuccess={(loggedUser) => {
           setUser(loggedUser);
           if (loggedUser) {
-            loadUserDataFromDatabase(loggedUser, true);
+            handleCloudSync(loggedUser, true);
           }
         }}
       />
