@@ -99,9 +99,14 @@ function youtubePlaylistPlugin(): Plugin {
                 channelTitle = v.shortBylineText.runs[0].text;
               }
 
+              let cleanTitle = videoTitle;
+              if (cleanTitle.toLowerCase() === 'private video' || cleanTitle.toLowerCase() === 'vídeo privado') {
+                cleanTitle = `Aula ${lessons.length + 1} (Exclusiva para Membros / Restrita)`;
+              }
+
               lessons.push({
                 id: videoId,
-                title: videoTitle,
+                title: cleanTitle,
                 duration,
                 thumbnailUrl: thumb,
                 completed: false,

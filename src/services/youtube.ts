@@ -60,49 +60,121 @@ export async function fetchPlaylistViaLocalServer(
 }
 
 /**
- * 2. Busca itens da playlist usando a API oficial v3 (se o usuário informou chave)
+ * 2. Busca itens da playlist usando a API oficial v3 (com paginação completa e suporte a vídeos de membros)
  */
 export async function fetchPlaylistViaApi(
   playlistId: string,
   apiKey: string
 ): Promise<{ title: string; channelTitle: string; description: string; lessons: Lesson[] }> {
-  const plUrl = `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${apiKey}`;
+  const cleanKey = apiKey.trim();
+
+  // 1. Busca metadados da playlist
+  const plUrl = `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${encodeURIComponent(playlistId)}&key=${cleanKey}`;
   const plRes = await fetch(plUrl);
   if (!plRes.ok) {
-    const err = await plRes.json();
-    throw new Error(err?.error?.message || 'Erro ao carregar detalhes da playlist');
+    const err = await plRes.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Erro HTTP ${plRes.status} ao carregar detalhes da playlist`);
   }
   const plData = await plRes.json();
   const plSnippet = plData.items?.[0]?.snippet || {};
 
-  const itemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}`;
-  const itemsRes = await fetch(itemsUrl);
-  if (!itemsRes.ok) {
-    const err = await itemsRes.json();
-    throw new Error(err?.error?.message || 'Erro ao carregar vídeos da playlist');
-  }
-  const itemsData = await itemsRes.json();
+  // 2. Busca TODOS os vídeos com paginação completa (nextPageToken)
+  const allItems: any[] = [];
+  let nextPageToken: string | undefined = undefined;
+  let pageCount = 0;
+  const MAX_PAGES = 30; // Suporta playlists com até 1500 vídeos
 
-  const lessons: Lesson[] = (itemsData.items || [])
-    .filter(
-      (item: any) =>
-        item.snippet?.title !== 'Private video' && item.snippet?.title !== 'Deleted video'
-    )
-    .map((item: any, idx: number) => {
-      const videoId = item.contentDetails?.videoId || item.snippet?.resourceId?.videoId;
-      const title = item.snippet?.title || `Aula ${idx + 1}`;
-      const thumb =
-        item.snippet?.thumbnails?.medium?.url ||
-        item.snippet?.thumbnails?.default?.url ||
-        `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-      return {
-        id: videoId,
-        title,
-        thumbnailUrl: thumb,
-        completed: false,
-        lastPositionSeconds: 0,
-      };
+  do {
+    pageCount++;
+    let itemsUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status&maxResults=50&playlistId=${encodeURIComponent(playlistId)}&key=${cleanKey}`;
+    if (nextPageToken) {
+      itemsUrl += `&pageToken=${encodeURIComponent(nextPageToken)}`;
+    }
+
+    const itemsRes = await fetch(itemsUrl);
+    if (!itemsRes.ok) {
+      const err = await itemsRes.json().catch(() => ({}));
+      if (allItems.length > 0) {
+        console.warn('Interrompendo paginação por aviso da API:', err);
+        break;
+      }
+      throw new Error(err?.error?.message || 'Erro ao carregar vídeos da playlist');
+    }
+
+    const itemsData = await itemsRes.json();
+    if (Array.isArray(itemsData.items)) {
+      allItems.push(...itemsData.items);
+    }
+
+    nextPageToken = itemsData.nextPageToken;
+  } while (nextPageToken && pageCount < MAX_PAGES);
+
+  // 3. Busca a duração exata de todos os vídeos em lotes de 50
+  const videoIds = allItems
+    .map((item) => item.contentDetails?.videoId || item.snippet?.resourceId?.videoId)
+    .filter((id): id is string => Boolean(id && typeof id === 'string'));
+
+  const durationMap: Record<string, string> = {};
+
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const chunk = videoIds.slice(i, i + 50);
+    try {
+      const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${chunk.join(',')}&key=${cleanKey}`;
+      const vRes = await fetch(vUrl);
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        for (const vItem of vData.items || []) {
+          if (vItem.id && vItem.contentDetails?.duration) {
+            durationMap[vItem.id] = vItem.contentDetails.duration;
+          }
+        }
+      }
+    } catch {
+      // Ignora falha de duração pontual
+    }
+  }
+
+  // 4. Mapeia as aulas preservando a sequência original e tratando vídeos de membros
+  const lessons: Lesson[] = [];
+
+  allItems.forEach((item: any, idx: number) => {
+    const videoId = item.contentDetails?.videoId || item.snippet?.resourceId?.videoId;
+    if (!videoId) return;
+
+    const rawTitle = (item.snippet?.title || '').trim();
+    const isDeleted =
+      rawTitle.toLowerCase() === 'deleted video' ||
+      rawTitle.toLowerCase() === 'vídeo excluído';
+
+    // Vídeos excluídos que não existem mais são ignorados
+    if (isDeleted) return;
+
+    const isPrivateOrMember =
+      rawTitle.toLowerCase() === 'private video' ||
+      rawTitle.toLowerCase() === 'vídeo privado' ||
+      item.status?.privacyStatus === 'private';
+
+    // Vídeos exclusivos para membros mantêm a aula indexada e acessível
+    let title = rawTitle;
+    if (isPrivateOrMember || !title) {
+      title = `Aula ${idx + 1} (Exclusiva para Membros / Restrita)`;
+    }
+
+    const thumb =
+      item.snippet?.thumbnails?.medium?.url ||
+      item.snippet?.thumbnails?.high?.url ||
+      item.snippet?.thumbnails?.default?.url ||
+      `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+    lessons.push({
+      id: videoId,
+      title,
+      duration: durationMap[videoId] || '',
+      thumbnailUrl: thumb,
+      completed: false,
+      lastPositionSeconds: 0,
     });
+  });
 
   return {
     title: plSnippet.title || 'Curso Sem Nome',
@@ -240,8 +312,8 @@ export function parseManualLessonList(rawText: string): Lesson[] {
 
 /**
  * Sincroniza incrementalmente uma playlist existente com o YouTube:
- * - Mantém intactas todas as aulas já concluídas, anotações e progresso.
- * - Adiciona novos vídeos lançados no final da lista.
+ * - Mantém intactas todas as aulas já concluídas, anotações e progresso do aluno.
+ * - Adiciona novos vídeos lançados respeitando a ordem cronológica original da playlist.
  */
 export async function syncCoursePlaylist(
   course: Course,
@@ -252,22 +324,38 @@ export async function syncCoursePlaylist(
   }
 
   const freshData = await fetchPlaylistData(course.playlistId, apiKey);
-  const existingIdSet = new Set(course.lessons.map((l) => l.id));
+  const existingLessonsMap = new Map(course.lessons.map((l) => [l.id, l]));
 
-  const newLessons: Lesson[] = [];
-
-  for (const freshLesson of freshData.lessons) {
-    if (!existingIdSet.has(freshLesson.id)) {
-      newLessons.push({
+  let addedCount = 0;
+  const mergedLessons: Lesson[] = freshData.lessons.map((freshLesson) => {
+    const existing = existingLessonsMap.get(freshLesson.id);
+    if (existing) {
+      // Preserva progresso, notas e timestamp salvos pelo aluno
+      return {
+        ...freshLesson,
+        ...existing,
+        duration: existing.duration || freshLesson.duration,
+        title: existing.title && !existing.title.startsWith('Aula ') ? existing.title : freshLesson.title,
+      };
+    } else {
+      addedCount++;
+      return {
         ...freshLesson,
         completed: false,
         lastPositionSeconds: 0,
-      });
-      existingIdSet.add(freshLesson.id);
+      };
+    }
+  });
+
+  // Mantém também aulas adicionadas manualmente se houver alguma fora da playlist oficial
+  const freshIdSet = new Set(freshData.lessons.map((l) => l.id));
+  for (const existingLesson of course.lessons) {
+    if (!freshIdSet.has(existingLesson.id)) {
+      mergedLessons.push(existingLesson);
     }
   }
 
-  if (newLessons.length === 0) {
+  if (addedCount === 0 && mergedLessons.length === course.lessons.length) {
     return {
       updatedCourse: course,
       addedCount: 0,
@@ -276,13 +364,13 @@ export async function syncCoursePlaylist(
 
   const updatedCourse: Course = {
     ...course,
-    lessons: [...course.lessons, ...newLessons],
+    lessons: mergedLessons,
     lastAccessedAt: new Date().toISOString(),
   };
 
   return {
     updatedCourse,
-    addedCount: newLessons.length,
+    addedCount,
   };
 }
 

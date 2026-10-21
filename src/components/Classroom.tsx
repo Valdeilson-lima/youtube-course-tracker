@@ -241,9 +241,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
       const next = !prev;
       if (next) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        toast.info('Luzes Apagadas', 'Modo Cinema ativado! Pressione Esc, D ou clique fora para acender.');
-      } else {
-        toast.info('Luzes Acesas', 'Modo normal restaurado.');
       }
       return next;
     });
@@ -259,10 +256,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
       if (typeof window !== 'undefined' && window.innerWidth < 1024) {
         setMobileTab(next ? 'lessons' : 'video');
       }
-      toast.info(
-        next ? 'Lista de Aulas Aberta' : 'Lista de Aulas Ocultada',
-        next ? 'Visualizando índice completo de aulas.' : 'Foco expandido na área de vídeo. Pressione S para reabrir.'
-      );
       return next;
     });
   };
@@ -295,7 +288,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
     playerRef.current?.seekTo(seconds);
     setMobileTab('video');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast.info('Pulo no Vídeo', `Avançando para ${formatTime(seconds)}`);
   };
 
   // Switch to a new lesson
@@ -457,8 +449,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
       courseRef.current = updatedCourse;
       onUpdateCourse(updatedCourse);
 
-      toast.info('Avanço Automático', 'Iniciando próxima aula em instantes...');
-
       setTimeout(() => {
         setActiveLessonId(nextLessonId);
         setMobileTab('video');
@@ -567,7 +557,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
     const currentSecs = playerRef.current?.getCurrentTime?.() ?? currentTime;
     const timestampStr = `[${formatTime(currentSecs)}] `;
     handleSaveNotes(noteText + (noteText ? '\n' : '') + timestampStr);
-    toast.info('Timestamp Inserido', `Momento ${timestampStr.trim()} adicionado nas anotações.`);
   };
 
   // Export notes for this course
@@ -606,7 +595,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
         if (isLightsOff) {
           e.preventDefault();
           setIsLightsOff(false);
-          toast.info('Luzes Acesas', 'Modo normal restaurado.');
           return;
         }
       }
@@ -620,11 +608,9 @@ export const Classroom: React.FC<ClassroomProps> = ({
       } else if (e.key === 'j' || e.key === 'J') {
         e.preventDefault();
         playerRef.current?.rewind(10);
-        toast.info('Voltar 10s', '-10 segundos');
       } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         playerRef.current?.forward(10);
-        toast.info('Avançar 10s', '+10 segundos');
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         goToNextLesson();
@@ -637,7 +623,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         setIsTheaterMode((prev) => !prev);
-        toast.info('Modo Teatro', isTheaterMode ? 'Retornando ao modo normal' : 'Modo teatro expandido ativado');
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         toggleLights();
@@ -647,7 +632,6 @@ export const Classroom: React.FC<ClassroomProps> = ({
       } else if (e.key === 'i' || e.key === 'I') {
         e.preventDefault();
         setIsMiniplayer((prev) => !prev);
-        toast.info('Miniplayer', !isMiniplayer ? 'Modo miniplayer ativado' : 'Restaurado para tela principal');
       } else if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         playerRef.current?.toggleMute();

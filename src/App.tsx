@@ -136,7 +136,8 @@ const AppContent: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        handleCloudSync(session.user, true);
+        // Sincronização em segundo plano silenciosa (não emite toast repetitivo)
+        handleCloudSync(session.user, false);
       } else {
         setCourses([]);
         setIsAuthModalOpen(true);
@@ -300,9 +301,9 @@ const AppContent: React.FC = () => {
     setCurrentCourseId(newCourse.id);
     toast.success('Curso Adicionado!', `"${newCourse.title}" foi importado com sucesso.`);
 
-    saveCourseToCloud(newCourse, user.id)
-      .then(() => toast.info('Salvo na Nuvem', 'Curso gravado com sucesso no Supabase.'))
-      .catch((err) => console.error('Falha ao salvar na nuvem:', err));
+    saveCourseToCloud(newCourse, user.id).catch((err) =>
+      console.error('Falha ao salvar na nuvem:', err)
+    );
   };
 
   const handleResetAllData = () => {
