@@ -547,7 +547,8 @@ export const Classroom: React.FC<ClassroomProps> = ({
         activeLesson.title,
         course.title,
         course.channelTitle,
-        settings.geminiApiKey
+        settings.geminiApiKey,
+        activeLesson.id
       );
       setCurrentSummary(summary);
     } catch (err) {

@@ -134,13 +134,120 @@ function youtubePlaylistPlugin(): Plugin {
     }
   };
 
+  const handleTranscriptRequest = async (req: any, res: any) => {
+    try {
+      const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+      const videoId = urlObj.searchParams.get('videoId') || urlObj.searchParams.get('id');
+      if (!videoId) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Parâmetro videoId obrigatório' }));
+        return;
+      }
+
+      const pageRes = await fetch(`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+      });
+
+      if (!pageRes.ok) {
+        res.statusCode = pageRes.status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Não foi possível carregar o vídeo do YouTube.' }));
+        return;
+      }
+
+      const html = await pageRes.text();
+      const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+      if (!apiKeyMatch) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Chave interna do YouTube não encontrada.' }));
+        return;
+      }
+      const apiKey = apiKeyMatch[1];
+
+      const playerRes = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
+          videoId,
+        }),
+      });
+
+      if (!playerRes.ok) {
+        res.statusCode = playerRes.status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Não foi possível obter dados do reprodutor do YouTube.' }));
+        return;
+      }
+
+      const playerData = await playerRes.json();
+      const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+
+      if (!captionTracks || captionTracks.length === 0) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(
+          JSON.stringify({
+            success: false,
+            transcript: null,
+            error: 'Este vídeo não possui legendas ou transcrição disponível no YouTube.',
+          })
+        );
+        return;
+      }
+
+      // Prioriza Português (pt ou pt-BR) ou o primeiro disponível
+      const targetTrack =
+        captionTracks.find((t: any) => t.languageCode === 'pt' || t.languageCode === 'pt-BR') ||
+        captionTracks[0];
+
+      const captionRes = await fetch(targetTrack.baseUrl);
+      const xml = await captionRes.text();
+
+      // Limpa tags XML preservando espaçamento e pontuação
+      const cleanText = xml
+        .replace(/<text[^>]*>/g, ' ')
+        .replace(/<\/text>/g, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(
+        JSON.stringify({
+          success: true,
+          transcript: cleanText,
+          language: targetTrack.languageCode,
+          trackName: targetTrack.name?.runs?.[0]?.text || targetTrack.name?.simpleText || 'Padrão',
+        })
+      );
+    } catch (err: any) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: err.message || 'Erro ao extrair transcrição' }));
+    }
+  };
+
   return {
     name: 'youtube-playlist-api',
     configureServer(server) {
       server.middlewares.use('/api/playlist', handlePlaylistRequest);
+      server.middlewares.use('/api/transcript', handleTranscriptRequest);
     },
     configurePreviewServer(server) {
       server.middlewares.use('/api/playlist', handlePlaylistRequest);
+      server.middlewares.use('/api/transcript', handleTranscriptRequest);
     },
   };
 }
