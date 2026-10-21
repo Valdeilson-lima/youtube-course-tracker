@@ -246,6 +246,17 @@ export const Classroom: React.FC<ClassroomProps> = ({
     });
   };
 
+  // Toggle Theater Mode (Widescreen Top Stage)
+  const toggleTheaterMode = () => {
+    setIsTheaterMode((prev) => {
+      const next = !prev;
+      if (next) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return next;
+    });
+  };
+
   // Toggle Lessons List Sidebar
   const toggleLessonsSidebar = () => {
     setIsLessonsSidebarOpen((prev) => {
@@ -622,7 +633,7 @@ export const Classroom: React.FC<ClassroomProps> = ({
         toggleLessonCompletion(activeLessonId);
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
-        setIsTheaterMode((prev) => !prev);
+        toggleTheaterMode();
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         toggleLights();
@@ -847,12 +858,28 @@ export const Classroom: React.FC<ClassroomProps> = ({
         </div>
       )}
 
-      {/* Main Content Layout (Theater Mode or Closed Sidebar expands max-w) */}
-      <div className="flex-1 flex flex-col lg:flex-row min-w-0 w-full">
-        {/* Left Column (Video & Player) */}
+      {/* Main Content Layout (Widescreen Theater Mode or Standard 2-Column Mode) */}
+      <div
+        className={`flex-1 min-w-0 w-full transition-all duration-300 ${
+          isTheaterMode
+            ? `max-w-[1750px] mx-auto p-2 sm:p-4 lg:p-6 lg:grid ${
+                isLessonsSidebarOpen
+                  ? 'lg:grid-cols-[minmax(0,1fr)_384px] xl:grid-cols-[minmax(0,1fr)_420px] lg:gap-6'
+                  : 'lg:grid-cols-1 max-w-7xl'
+              }`
+            : isLessonsSidebarOpen
+            ? 'flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_384px]'
+            : 'flex flex-col p-2 sm:p-6 lg:p-8 max-w-7xl mx-auto'
+        }`}
+      >
+        {/* 1. Video & Player Controls Stage */}
         <div
-          className={`flex-1 min-w-0 p-2 sm:p-6 lg:p-8 flex flex-col gap-3 sm:gap-6 transition-all duration-300 ${
-            isTheaterMode || !isLessonsSidebarOpen ? 'w-full max-w-7xl mx-auto' : 'w-full max-w-none'
+          className={`min-w-0 transition-all duration-300 ${
+            isTheaterMode
+              ? 'lg:col-span-full lg:row-start-1 w-full flex flex-col gap-3 sm:gap-4'
+              : isLessonsSidebarOpen
+              ? 'lg:col-start-1 lg:col-end-2 lg:row-start-1 p-2 sm:p-6 lg:px-8 lg:pt-8 lg:pb-3 flex flex-col gap-3 sm:gap-6'
+              : 'w-full flex flex-col gap-3 sm:gap-6'
           } ${mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'} ${
             isLightsOff ? 'relative z-[60]' : ''
           }`}
@@ -1036,18 +1063,20 @@ export const Classroom: React.FC<ClassroomProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setIsTheaterMode(!isTheaterMode)}
-                  title="Modo Teatro: expande o vídeo na tela (Atalho: F)"
-                  aria-label="Alternar modo teatro"
+                  onClick={toggleTheaterMode}
+                  title={isTheaterMode ? 'Sair do Modo Teatro (Atalho: F)' : 'Modo Teatro: expande o vídeo em tela ampla (Atalho: F)'}
+                  aria-label={isTheaterMode ? 'Sair do modo teatro' : 'Ativar modo teatro'}
                   className={`hidden sm:inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border min-h-[40px] sm:min-h-[36px] active:scale-95 cursor-pointer ${
                     isTheaterMode
-                      ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-sm font-bold'
+                      ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-600/30 font-bold ring-2 ring-red-500/40'
                       : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
                 >
                   <Tv className="w-4 h-4" />
                   <span>{isTheaterMode ? 'Teatro Ativo' : 'Modo Teatro'}</span>
-                  <kbd className="hidden md:inline px-1 py-0.5 text-[9px] bg-slate-900 border border-slate-700 rounded text-slate-400 font-mono">F</kbd>
+                  <kbd className={`hidden md:inline px-1 py-0.5 text-[9px] rounded font-mono ${
+                    isTheaterMode ? 'bg-red-700/60 text-red-100 border border-red-400/40' : 'bg-slate-900 border border-slate-700 text-slate-400'
+                  }`}>F</kbd>
                 </button>
               </div>
 
@@ -1081,9 +1110,20 @@ export const Classroom: React.FC<ClassroomProps> = ({
               </div>
             </div>
           </div>
+        </div>
 
+        {/* 2. Lesson Title, Details & Notes Deck */}
+        <div
+          className={`min-w-0 transition-all duration-300 ${
+            isTheaterMode
+              ? 'lg:col-start-1 lg:col-end-2 lg:row-start-2 flex flex-col gap-4 sm:gap-6'
+              : isLessonsSidebarOpen
+              ? 'lg:col-start-1 lg:col-end-2 lg:row-start-2 p-2 sm:p-6 lg:px-8 lg:pt-0 lg:pb-8 flex flex-col gap-3 sm:gap-6'
+              : 'w-full flex flex-col gap-4 sm:gap-6'
+          }`}
+        >
           {/* Current Lesson Title */}
-          <div className="px-1 sm:px-0">
+          <div className={`px-1 sm:px-0 ${mobileTab !== 'video' ? 'hidden lg:block' : 'block'}`}>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-2 text-[11px] sm:text-xs text-red-400 font-semibold">
                 <span className="px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
@@ -1122,7 +1162,9 @@ export const Classroom: React.FC<ClassroomProps> = ({
           {nextLesson && (
             <div
               onClick={() => selectLesson(nextLesson.id)}
-              className="sm:hidden p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700 active:scale-[0.99] transition"
+              className={`p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700 active:scale-[0.99] transition ${
+                mobileTab !== 'video' ? 'hidden' : 'block sm:hidden'
+              }`}
             >
               <div className="min-w-0">
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">A Seguir</p>
@@ -1263,85 +1305,85 @@ export const Classroom: React.FC<ClassroomProps> = ({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Mobile Notes Tab View */}
-        <div
-          className={`flex-1 p-3 ${
-            mobileTab === 'notes' ? 'block lg:hidden' : 'hidden'
-          }`}
-        >
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-xs sm:text-sm text-white flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-red-500" />
-                <span>Anotações da Aula {activeLessonIndex + 1}</span>
-              </h3>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <button
-                  onClick={handleGenerateSummary}
-                  title="Resumo com IA"
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-sm min-h-[44px] active:scale-95 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>IA</span>
-                </button>
-                <button
-                  onClick={insertTimestamp}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[44px] active:scale-95 cursor-pointer"
-                >
-                  <Clock className="w-4 h-4" />
-                  <span>Timestamp</span>
-                </button>
-                <button
-                  onClick={downloadCourseNotes}
-                  className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile Timestamps list */}
-            {timestampsInNotes.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 shrink-0">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" /> Pular:
-                </span>
-                {timestampsInNotes.map((ts, idx) => (
+          {/* Mobile Notes Tab View */}
+          <div
+            className={`${
+              mobileTab === 'notes' ? 'block lg:hidden' : 'hidden'
+            }`}
+          >
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-xs sm:text-sm text-white flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-red-500" />
+                  <span>Anotações da Aula {activeLessonIndex + 1}</span>
+                </h3>
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSeekToTimestamp(ts.seconds)}
-                    className="px-2.5 py-1.5 text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg active:scale-95 min-h-[36px] flex items-center"
+                    onClick={handleGenerateSummary}
+                    title="Resumo com IA"
+                    className="flex items-center gap-1 px-3 py-2 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-sm min-h-[44px] active:scale-95 cursor-pointer"
                   >
-                    ⏱️ {ts.label}
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>IA</span>
                   </button>
-                ))}
+                  <button
+                    onClick={insertTimestamp}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-slate-800 text-amber-400 rounded-xl border border-slate-700 min-h-[44px] active:scale-95 cursor-pointer"
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span>Timestamp</span>
+                  </button>
+                  <button
+                    onClick={downloadCourseNotes}
+                    className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-700 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            )}
 
-            <textarea
-              value={noteText}
-              onChange={(e) => handleSaveNotes(e.target.value)}
-              placeholder="Escreva suas anotações desta aula aqui... (Salvamento automático)"
-              rows={12}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-base sm:text-sm font-mono text-slate-200 focus:outline-none focus:border-red-500 leading-relaxed"
-            />
+              {/* Mobile Timestamps list */}
+              {timestampsInNotes.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 shrink-0">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" /> Pular:
+                  </span>
+                  {timestampsInNotes.map((ts, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSeekToTimestamp(ts.seconds)}
+                      className="px-2.5 py-1.5 text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg active:scale-95 min-h-[36px] flex items-center"
+                    >
+                      ⏱️ {ts.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <textarea
+                value={noteText}
+                onChange={(e) => handleSaveNotes(e.target.value)}
+                placeholder="Escreva suas anotações desta aula aqui... (Salvamento automático)"
+                rows={12}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-base sm:text-sm font-mono text-slate-200 focus:outline-none focus:border-red-500 leading-relaxed"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Lessons Sidebar */}
+        {/* 3. Lessons Sidebar */}
         <div
-          className={`w-full ${
-            isTheaterMode ? 'lg:w-80' : 'lg:w-96'
-          } shrink-0 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 transition-all duration-300 ${
+          className={`w-full transition-all duration-300 ${
+            isTheaterMode
+              ? 'lg:col-start-2 lg:col-end-3 lg:row-start-2 rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden flex flex-col h-[750px] lg:sticky lg:top-20'
+              : 'lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16'
+          } ${
             !isLessonsSidebarOpen
               ? 'hidden'
               : mobileTab === 'lessons'
               ? 'flex'
-              : isTheaterMode
-              ? 'hidden xl:flex'
               : 'hidden lg:flex'
           }`}
         >
