@@ -179,34 +179,99 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
 
-          {/* Gemini AI API Key (Optional) */}
-          <div className="space-y-2">
+          {/* Gemini AI API Key & Model Selection */}
+          <div className="space-y-3 p-4 rounded-2xl bg-purple-950/20 border border-purple-500/25">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                Chave da API do Google Gemini (Resumos com IA)
+                Inteligência Artificial (Google Gemini)
               </label>
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 hover:underline"
+                className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 hover:underline font-medium"
               >
                 <span>Obter Chave Gratuita</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={currentSettings.geminiApiKey || ''}
-              onChange={(e) =>
-                setCurrentSettings({ ...currentSettings, geminiApiKey: e.target.value.trim() })
-              }
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono transition min-h-[44px] sm:min-h-[40px]"
-            />
-            <p className="text-[11px] text-slate-500">
-              Opcional. Se não preencher, o sistema gera resumos inteligentes estruturados em modo offline. Ao adicionar sua chave gratuita do Google AI Studio, o modelo Gemini 1.5 Flash sintetiza os pontos-chave de cada aula em tempo real.
+
+            <div className="space-y-1.5">
+              <span className="text-xs text-slate-300 font-medium">Chave da API do Gemini</span>
+              <input
+                type="password"
+                placeholder="AIzaSy..."
+                value={currentSettings.geminiApiKey || ''}
+                onChange={(e) =>
+                  setCurrentSettings({ ...currentSettings, geminiApiKey: e.target.value.trim() })
+                }
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-base sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono transition min-h-[44px] sm:min-h-[40px]"
+              />
+            </div>
+
+            {/* Model Selector: Pro vs Flash */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-xs text-slate-300 font-medium">Modelo de IA</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentSettings({
+                      ...currentSettings,
+                      geminiModel: 'gemini-1.5-pro',
+                    })
+                  }
+                  className={`p-3 rounded-xl border text-left transition active:scale-98 cursor-pointer ${
+                    (currentSettings.geminiModel || 'gemini-1.5-pro') === 'gemini-1.5-pro'
+                      ? 'bg-purple-600/20 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/30'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                      Gemini 1.5 Pro
+                      <span className="text-[10px] bg-purple-500/30 text-purple-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                        PRO
+                      </span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Raciocínio avançado, máxima fidelidade para reconstrução de códigos e aulas longas.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentSettings({
+                      ...currentSettings,
+                      geminiModel: 'gemini-1.5-flash',
+                    })
+                  }
+                  className={`p-3 rounded-xl border text-left transition active:scale-98 cursor-pointer ${
+                    currentSettings.geminiModel === 'gemini-1.5-flash'
+                      ? 'bg-purple-600/20 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/30'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      Gemini 1.5 Flash
+                      <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded font-mono">
+                        RÁPIDO
+                      </span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Gera resumos leves em menos de 2 segundos. Ideal para conexões rápidas.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 pt-1">
+              A chave do Google AI Studio dá acesso gratuito a ambos os modelos. Se o modelo Pro encontrar limite temporário de requisições, o sistema faz fallback automático para o Flash sem travar seu estudo.
             </p>
           </div>
 

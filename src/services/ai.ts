@@ -19,6 +19,7 @@ export interface LessonSummary {
   codeSnippets?: CodeSnippet[];
   tips?: string;
   transcriptSource?: 'youtube_captions' | 'ai_synthesized';
+  aiModel?: string;
   language?: string;
   markdown: string;
 }
@@ -28,7 +29,8 @@ export async function generateLessonSummary(
   courseTitle: string,
   channelTitle: string = '',
   apiKey?: string,
-  videoId?: string
+  videoId?: string,
+  modelName: string = 'gemini-1.5-pro'
 ): Promise<LessonSummary> {
   const effectiveKey = apiKey || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
 
@@ -45,10 +47,12 @@ export async function generateLessonSummary(
   const hasTranscript = Boolean(transcriptData && transcriptData.transcript.length > 50);
   const transcriptText = hasTranscript ? transcriptData!.transcript.slice(0, 45000) : '';
 
-  // 2. Se tiver chave Gemini, consulta o modelo Gemini Flash oficial
+  // 2. Se tiver chave Gemini, consulta o modelo oficial (Pro ou Flash com fallback)
   if (effectiveKey) {
-    try {
-      const prompt = `Você é um tutor especialista em programação, tecnologia e ensino prático.
+    const modelsToTry = [modelName, 'gemini-1.5-flash'];
+    const uniqueModels = Array.from(new Set(modelsToTry));
+
+    const prompt = `Você é um tutor especialista em programação, tecnologia e ensino prático.
 Analise a aula "${lessonTitle}" do curso "${courseTitle}" (Canal: "${channelTitle}").
 
 ${
@@ -59,7 +63,7 @@ ${transcriptText}
 
 Com base na transcrição acima do que o instrutor realmente explicou e demonstrou no vídeo:
 `
-    : `O vídeo não possui transcrição de áudio direta disponível. Faça uma análise técnica precisa baseada no tema e tecnologia da aula:
+    : `O vídeo não possui transcrição de áudio direta disponível. Faça uma análise técnica profunda baseada no tema e tecnologia da aula:
 `
 }
 
@@ -80,39 +84,45 @@ Sua resposta DEVE seguir rigorosamente esta estrutura em markdown:
 ### 💡 Dica Prática para Estudo
 (Uma dica de ouro ou boa prática para aplicar e fixar o conhecimento desta aula)`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }],
+    for (const currentModel of uniqueModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${effectiveKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [{ text: prompt }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.35,
+                maxOutputTokens: 2048,
               },
-            ],
-            generationConfig: {
-              temperature: 0.35,
-              maxOutputTokens: 1800,
-            },
-          }),
-        }
-      );
+            }),
+          }
+        );
 
-      if (response.ok) {
-        const json = await response.json();
-        const candidate = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidate) {
-          return parseMarkdownToSummary(
-            lessonTitle,
-            candidate,
-            hasTranscript ? 'youtube_captions' : 'ai_synthesized',
-            transcriptData?.language
-          );
+        if (response.ok) {
+          const json = await response.json();
+          const candidate = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidate) {
+            return parseMarkdownToSummary(
+              lessonTitle,
+              candidate,
+              hasTranscript ? 'youtube_captions' : 'ai_synthesized',
+              currentModel,
+              transcriptData?.language
+            );
+          }
+        } else {
+          console.warn(`Tentativa com ${currentModel} falhou (${response.status}), tentando modelo alternativo...`);
         }
+      } catch (err) {
+        console.warn(`Erro ao consultar modelo ${currentModel}:`, err);
       }
-    } catch (err) {
-      console.warn('Erro ao consultar Gemini API, utilizando gerador inteligente offline:', err);
     }
   }
 
@@ -124,6 +134,7 @@ export function parseMarkdownToSummary(
   title: string,
   markdown: string,
   transcriptSource: 'youtube_captions' | 'ai_synthesized' = 'ai_synthesized',
+  aiModel?: string,
   language?: string
 ): LessonSummary {
   const lines = markdown.split('\n');
@@ -189,6 +200,7 @@ export function parseMarkdownToSummary(
     codeSnippets: codeSnippets.length > 0 ? codeSnippets : undefined,
     tips: tips || 'Pratique os códigos demonstrados no seu próprio editor para fixar o aprendizado.',
     transcriptSource,
+    aiModel: aiModel || 'gemini-1.5-pro',
     language,
     markdown,
   };
@@ -252,6 +264,7 @@ ${tips}
     ],
     tips,
     transcriptSource: transcriptSnippet ? 'youtube_captions' : 'ai_synthesized',
+    aiModel: 'offline',
     markdown,
   };
 }

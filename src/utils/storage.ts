@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   autoMarkCompleted: true,
   playbackRate: 1,
   youtubeApiKey: '',
+  geminiModel: 'gemini-1.5-pro',
 };
 
 export function loadCourses(): Course[] {
