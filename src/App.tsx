@@ -481,6 +481,7 @@ const AppContent: React.FC = () => {
         settings={settings}
         onClose={() => setIsAddModalOpen(false)}
         onAddCourse={handleAddCourse}
+        existingCategories={Array.from(new Set(courses.map((c) => c.category || 'Geral')))}
       />
 
       <SettingsModal

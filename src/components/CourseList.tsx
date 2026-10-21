@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Course } from '../types';
 import { useToast } from '../context/ToastContext';
 import { calculateCourseTimeStats } from '../utils/duration';
@@ -17,6 +17,10 @@ import {
   RefreshCw,
   Lock,
   LogIn,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  LayoutGrid,
 } from 'lucide-react';
 
 interface CourseListProps {
@@ -87,6 +91,42 @@ export const CourseList: React.FC<CourseListProps> = ({
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isCategoriesExpanded, setIsCategoriesExpanded] = useState<boolean>(false);
+  const categoriesContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
+  const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
+
+  const checkScrollBounds = () => {
+    const el = categoriesContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+  };
+
+  useEffect(() => {
+    checkScrollBounds();
+    const handleResize = () => checkScrollBounds();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isCategoriesExpanded]);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (!categoriesContainerRef.current) return;
+    const scrollAmount = 280;
+    categoriesContainerRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+    setTimeout(checkScrollBounds, 300);
+  };
+
+  const handleCategoriesWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && categoriesContainerRef.current && !isCategoriesExpanded) {
+      categoriesContainerRef.current.scrollLeft += e.deltaY;
+      checkScrollBounds();
+    }
+  };
 
   // Extract unique categories and calculate counts
   const categoryMap = courses.reduce<Record<string, number>>((acc, course) => {
@@ -219,33 +259,108 @@ export const CourseList: React.FC<CourseListProps> = ({
 
       {/* Categories & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory">
-          {categories.map((cat) => {
-            const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
-            const isSelected = selectedCategory === cat;
-
-            return (
+        {/* Category Tabs Container */}
+        <div className="flex-1 min-w-0 relative flex items-center gap-1.5">
+          {/* Scroll Left Button */}
+          {!isCategoriesExpanded && canScrollLeft && (
+            <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center pr-2 bg-gradient-to-r from-slate-950 via-slate-950/95 to-transparent">
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`snap-start flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[44px] sm:min-h-[36px] active:scale-95 cursor-pointer ${
-                  isSelected
-                    ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
-                    : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700'
-                }`}
+                type="button"
+                onClick={() => scrollCategories('left')}
+                title="Rolar categorias para a esquerda"
+                aria-label="Rolar categorias para a esquerda"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer"
               >
-                <span>{cat}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                    isSelected ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-400'
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Categories List (Scrollable strip or Expanded wrap) */}
+          <div
+            ref={categoriesContainerRef}
+            onScroll={checkScrollBounds}
+            onWheel={handleCategoriesWheel}
+            className={`w-full transition-all duration-200 ${
+              isCategoriesExpanded
+                ? 'flex flex-wrap gap-1.5 sm:gap-2 py-1'
+                : 'flex items-center gap-1.5 sm:gap-2 overflow-x-auto scroll-smooth py-1.5 px-0.5'
+            }`}
+            style={
+              !isCategoriesExpanded
+                ? {
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(51, 65, 85, 0.7) transparent',
+                  }
+                : undefined
+            }
+          >
+            {categories.map((cat) => {
+              const count = cat === 'Todas' ? courses.length : categoryMap[cat] || 0;
+              const isSelected = selectedCategory === cat;
+
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[42px] sm:min-h-[36px] active:scale-95 cursor-pointer shrink-0 ${
+                    isSelected
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/25 ring-2 ring-red-500/40'
+                      : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700'
                   }`}
                 >
-                  {count}
-                </span>
+                  <span>{cat}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      isSelected ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Scroll Right Button */}
+          {!isCategoriesExpanded && canScrollRight && (
+            <div
+              className={`absolute top-0 bottom-0 z-20 flex items-center pl-2 bg-gradient-to-l from-slate-950 via-slate-950/95 to-transparent ${
+                categories.length > 3 ? 'right-11' : 'right-0'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => scrollCategories('right')}
+                title="Rolar categorias para a direita"
+                aria-label="Rolar categorias para a direita"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center shadow-lg transition active:scale-90 cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Toggle Expand/Collapse Button (when more than 3 categories) */}
+          {categories.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+              title={isCategoriesExpanded ? 'Recolher categorias em linha' : 'Ver todas as categorias expandidas'}
+              aria-label={isCategoriesExpanded ? 'Recolher categorias' : 'Expandir categorias'}
+              className={`shrink-0 p-2 rounded-xl border transition min-h-[42px] min-w-[42px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center active:scale-95 cursor-pointer ${
+                isCategoriesExpanded
+                  ? 'bg-red-500/15 text-red-400 border-red-500/40 font-bold'
+                  : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border-slate-800'
+              }`}
+            >
+              {isCategoriesExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <LayoutGrid className="w-4 h-4" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* Search Input (text-base sm:text-xs prevents iOS Safari auto-zoom) */}
@@ -485,19 +600,38 @@ export const CourseList: React.FC<CourseListProps> = ({
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-slate-200 focus:outline-none focus:border-red-500"
               />
-              <div className="flex flex-wrap gap-1.5">
-                {['Inteligência Artificial', 'Python', 'JavaScript', 'PHP', 'React', 'HTML & CSS'].map(
-                  (cat) => (
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                {Array.from(
+                  new Set([
+                    ...Object.keys(categoryMap),
+                    'Inteligência Artificial',
+                    'Python',
+                    'JavaScript',
+                    'PHP',
+                    'React',
+                    'Node.js',
+                    'HTML & CSS',
+                    'Java',
+                    'C# / .NET',
+                    'Banco de Dados',
+                    'Git & DevOps',
+                  ])
+                )
+                  .sort()
+                  .map((cat) => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setNewCategoryName(cat)}
-                      className="px-2.5 py-1.5 sm:py-0.5 rounded-lg bg-slate-800 text-xs sm:text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white transition active:scale-95"
+                      className={`px-2.5 py-1.5 sm:py-0.5 rounded-lg text-xs sm:text-[11px] transition active:scale-95 cursor-pointer ${
+                        newCategoryName === cat
+                          ? 'bg-red-600 text-white font-semibold shadow-sm'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/60'
+                      }`}
                     >
                       {cat}
                     </button>
-                  )
-                )}
+                  ))}
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button

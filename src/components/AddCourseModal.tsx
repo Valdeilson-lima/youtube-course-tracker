@@ -22,6 +22,7 @@ interface AddCourseModalProps {
   settings: UserSettings;
   onClose: () => void;
   onAddCourse: (newCourse: Course) => void;
+  existingCategories?: string[];
 }
 
 const POPULAR_CATEGORIES = [
@@ -85,6 +86,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
   settings,
   onClose,
   onAddCourse,
+  existingCategories = [],
 }) => {
   const [tab, setTab] = useState<'url' | 'manual'>('url');
   const [playlistUrl, setPlaylistUrl] = useState('');
@@ -318,7 +320,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({
               />
             ) : (
               <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-950/40 rounded-xl border border-slate-800/80">
-                {POPULAR_CATEGORIES.map((cat) => (
+                {Array.from(new Set([...existingCategories, ...POPULAR_CATEGORIES])).map((cat) => (
                   <button
                     key={cat}
                     type="button"
